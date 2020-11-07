@@ -9,6 +9,9 @@ following additional software is needed for this code to work:
 
     - for saving: FFmpeg (https://ffmpeg.org/download.html)
     - for animatePreview: plotly
+
+TODO: Implement additional data input for AI-simulated trajectories / comparision trajectories
+-> fix data format first!
 """
 
 #plot trajectories
