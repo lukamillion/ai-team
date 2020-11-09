@@ -450,7 +450,7 @@ class DataLoader():
                 (test_in, test_truth): testing data with corresponding truth values
 
         """
-        idexs, trajs = self.get_trajectories(nn=4, mode="zero", **kwargs)
+        idexs, trajs = self.get_trajectories(nn=nn, **kwargs)
         print("loaded {} trajectories".format(len(idexs)))
 
 
