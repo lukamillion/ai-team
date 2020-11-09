@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
 
+import copy
+
+
 import matplotlib.pyplot as plt
 
 """
@@ -17,10 +20,6 @@ import matplotlib.pyplot as plt
 
 
 """
-
-
-# TODO: train/ cut
-# TODO: Save Data
 
 
 
@@ -50,6 +49,7 @@ class DataLoader():
         self.FlipX = FlipX
         self.FlipY = FlipY
         
+        """
         with open(path) as f:
             df = df = pd.read_fwf(self.path, infer_nrows=10001, header=None)#, colspecs=colspecs, index_col=0)
             df.columns = ['p', 'f', 'y', 'x', 'z', ] # Chang x and y because date is stored transposed
@@ -58,10 +58,7 @@ class DataLoader():
         cor = np.vstack((np.ones(l)*(-1)**self.FlipX, np.ones(l)*(-1)**self.FlipY )).T
         
         df[['x', 'y']] = df[['x', 'y']].to_numpy()*cor
-        
-        
-        
-        
+                
         self.data = df
         
         dfv = pd.DataFrame(index=df.index, columns=['vx', 'vy'])
@@ -77,11 +74,17 @@ class DataLoader():
         
         
         self.data = df.join(dfv)
+        """
 
-        self.frames = self.data.f.max()
-        self.persons = self.data.p.max()
+        self.data = pd.DataFrame(columns=['p', 'f', 'x', 'y', 'z', 'vx', 'vy'])
         
+    @property
+    def frames(self):
+        return len(self.data.f.unique())
 
+    @property
+    def persons(self):
+        return len(self.data.p.unique())
         
     def get_vel_(self, pos, fps=-1, ):
         """
@@ -513,3 +516,131 @@ class DataLoader():
         plt.plot([-300, 300], [0, 0], c="k", lw="5")
         plt.legend(loc = 4)
         plt.show()
+
+    def remove_person(self, id):
+        """
+            Removes the person with the given id from the dataset. 
+
+            Param:
+                id: person id to remove 
+            Return:
+                -
+        """
+        self.data.drop(self.data[self.data.p==id].index, inplace=True)
+        
+
+    def replace_person(self, id, frame, traj, vel=None):
+        """
+            Replaces the trajectory of the person with the ID 
+
+            Param:
+                id: person id to replace 
+                frame: array of frames of the trajectory
+                traj: array of shape [[ x, y], ... ] encoding the positions
+            Return:
+                - 
+        """
+        self.remove_person(id)
+        self.append_person(id, frame, traj, vel=vel)
+        
+
+    def append_person(self, id, frame, traj, vel=None):
+        """
+            Append at trajectory for a new person ID.
+
+            Param:
+                id: person id to  append this must not be in the dataset
+                    convetion use id>100 for AI agents
+                frame: array of frames of the trajectory
+                traj: array of shape [[ x, y], ... ]encoding the positions
+                vel: optional array of velocities to append shape [[ vx, vy], ... ]
+            Return:
+                -
+        """
+
+        if id in self.data.p.to_list():
+            raise IndexError("Person ID already exists.")
+
+        l = traj.shape[0]
+
+        if vel is None:
+            vel = np.empty((l, 2))
+
+        data = np.hstack((np.ones((l,1))*id, frame.reshape((l,1)), traj, np.zeros((l,1)), vel) )
+
+        self.data = self.data.append( pd.DataFrame( data, columns=['p', 'f', 'x', 'y', 'z', 'vx', 'vy']),  ignore_index=True )
+
+
+    def copy(self, data):
+        """
+            Makes a deepcopy of the data and settings of the given data
+
+            Param:
+                data: object to copy from, path is not copied!
+
+            Return:
+                -
+        """
+        self.fps = data.fps
+        self.FlipX = data.FlipX
+        self.FlipY = data.FlipY
+
+        self.data = copy.copy(data.data)
+
+    def load(self,):
+        """
+            load data from the given path
+
+        """
+        if self.path[-3:] == "txt":
+            with open(self.path) as f:
+                df = df = pd.read_fwf(self.path, infer_nrows=10001, header=None)#, colspecs=colspecs, index_col=0)
+                df.columns = ['p', 'f', 'y', 'x', 'z', ] # Chang x and y because date is stored transposed
+            
+            l = len(df)
+            cor = np.vstack((np.ones(l)*(-1)**self.FlipX, np.ones(l)*(-1)**self.FlipY )).T
+            
+            df[['x', 'y']] = df[['x', 'y']].to_numpy()*cor
+                    
+            self.data = df
+            
+            dfv = pd.DataFrame(index=df.index, columns=['vx', 'vy'])
+            
+            for p_id in df.p.unique():
+            
+                idx, _, pers = self.person(p_id, ret_vel=False, with_id=True)
+
+                vx, vy = self.get_vel_(pers, self.fps)
+
+                dfv['vx'][idx] = vx
+                dfv['vy'][idx] = vy
+            
+            
+            self.data = df.join(dfv)
+
+            print("loaded {} persons".format(self.persons))
+
+        elif self.path[-3:]=="hd5":
+            self.data = pd.read_hdf(self.path, name="Dataset", mode="r")
+        elif self.path[-3:]=="csv":
+            self.data = pd.read_csv(self.path,index_col=0)
+        else:
+            print("unknown dataformat!!")
+        
+
+    def save(self, path, as_hd5=False ):
+        """
+            Saves the data as CSV or hd5 file.
+
+            Param:
+                path: path and name of file the ending is appended 
+                as_hd5: True file is saved as hd5 file
+                        False file is stored as csv
+        """
+        if as_hd5:
+            self.data.to_hdf(path+".hd5", key="Dataset", mode='w')
+        else:
+            self.data.to_csv(path+".csv" )
+
+
+
