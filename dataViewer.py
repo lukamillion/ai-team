@@ -7,11 +7,7 @@ rc('animation', html='html5')
 """
 following additional software is needed for this code to work:
 
-    - for saving: FFmpeg (https://ffmpeg.org/download.html)
     - for animatePreview: plotly
-
-TODO: Implement additional data input for AI-simulated trajectories / comparision trajectories
--> fix data format first!
 """
 
 #plot trajectories
@@ -54,6 +50,7 @@ def plotTraj(loader, boundaries, people=None, ai=None, legend=False, title="Traj
     ax1.set_xlim([boundaries[0], boundaries[1]])
     ax1.set_ylim([boundaries[2], boundaries[3]])
 
+    ax1.set_aspect('equal', adjustable='box')
     ax1.set_xlabel('x Pos. / cm')
     ax1.set_ylabel('y Pox. / cm ')
     ax1.set_title(title, loc="left")
@@ -67,7 +64,7 @@ def plotTraj(loader, boundaries, people=None, ai=None, legend=False, title="Traj
     plt.show()
     
 #Location Animation
-def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc_anim.mp4", save=False, step=1, fps=16, title="Location Animation"):
+def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc_anim.gif", save=False, step=1, fps=16, title="Location Animation", useFFMPEG=False):
     """ Animate the Trajectory as lines
 
         loader:     loader objekct that stores the data
@@ -86,7 +83,7 @@ def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc
     ai_data = []
 
     for i in np.arange(frame_start, frame_stop, step):
-        people, temp = loader.frame(i)
+        people, temp = loader.frame(i, ret_vel=False, with_id=False)
         data.append(temp)
         ai_data.append(temp[np.isin(people, ai)])
         
@@ -100,6 +97,7 @@ def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc
     ax1.set_xlim([boundaries[0], boundaries[1]])
     ax1.set_ylim([boundaries[2], boundaries[3]])
 
+    ax1.set_aspect('equal', adjustable='box')
     ax1.set_xlabel('x Pos. / cm')
     ax1.set_ylabel('y Pox. / cm ')
     ax1.set_title(title, loc="left")
@@ -116,13 +114,17 @@ def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc
     plt.close(fig)
     
     if save:
-        ani.save(path, fps=fps, extra_args=['-vcodec', 'libx264'])
+        if useFFMPEG:
+            writer = animation.FFMpegWriter(fps=fps/step, extra_args=['-vcodec', 'libx264'])
+        else:
+            writer = animation.PillowWriter(fps=fps/step, extra_args=['-vcodec', 'libx264'])
+        ani.save(path, writer=writer)
     return ani
 
 
 
 # Trajectory animation
-def animateTraj(loader, frame_start, frame_stop, boundaries, ai=None, path="traj_anim.mp4", save=False, step=1, fps=16, title="Trajectory Animation"):
+def animateTraj(loader, frame_start, frame_stop, boundaries, ai=None, path="traj_anim.gif", save=False, step=1, fps=16, title="Trajectory Animation", useFFMPEG=False):
     """ Animate the Trajectory as lines
 
         loader:     loader objekct that stores the data
@@ -135,17 +137,18 @@ def animateTraj(loader, frame_start, frame_stop, boundaries, ai=None, path="traj
         step:       frame steps for animation (f.e. step=5 uses every 5th frame)
         fps:        frames per second for the animation (with step=1)
         title:      Title of the Animation
+        useFFMPEG:  use FFMPEG writer instead of Pillow
     """
     # prepare data for animation
     data = []
     person = []
     colors = []
 
-    people_count = int(loader.data['p'].max() - loader.data['p'].min())
+    people_count = int(loader.data['p'].max() - loader.data['p'].min() + 1)
 
     for i in np.arange(frame_start, frame_stop, step):
-        data.append(loader.frame(i)[1])
-        person.append(loader.frame(i)[0])
+        data.append(loader.frame(i, ret_vel=False, with_id=False)[1])
+        person.append(loader.frame(i, ret_vel=False, with_id=False)[0])
 
     #Set the figure for the animation framework
     fig = plt.figure(figsize = (10,6))
@@ -155,6 +158,8 @@ def animateTraj(loader, frame_start, frame_stop, boundaries, ai=None, path="traj
     ax1.set_xlim([boundaries[0], boundaries[1]])
     ax1.set_ylim([boundaries[2], boundaries[3]])
 
+
+    ax1.set_aspect('equal', adjustable='box')
     ax1.set_xlabel('x Pos. / cm')
     ax1.set_ylabel('y Pox. / cm ')
     ax1.set_title(title, loc="left")
@@ -196,11 +201,15 @@ def animateTraj(loader, frame_start, frame_stop, boundaries, ai=None, path="traj
         return lines
 
     frames = int(np.floor((frame_stop - frame_start)/step))
-    ani = animation.FuncAnimation(fig = fig, func = animate, frames = frames, interval = int(step*1000/fps), blit=True) 
+    ani = animation.FuncAnimation(fig = fig, func = animate, frames = frames, interval = int(step/fps), blit=True) 
     plt.close(fig)
     
     if save:
-        ani.save(path, fps=fps, extra_args=['-vcodec', 'libx264'])
+        if useFFMPEG:
+            writer = animation.FFMpegWriter(fps=fps/step, extra_args=['-vcodec', 'libx264'])
+        else:
+            writer = animation.PillowWriter(fps=1000*fps/step, extra_args=['-vcodec', 'libx264'])
+        ani.save(path, writer=writer)
     return ani
 
 
@@ -214,7 +223,7 @@ def animatePreview(loader, boundaries, step):
         """
     import plotly.express as px
     fig = px.scatter(loader.data[(loader.data['f'] % 10) == 0], 
-           x="y", y="x", 
+           x="x", y="y", 
            animation_frame="f", animation_group='p', hover_name="p",
            range_x=[boundaries[0], boundaries[1]], range_y=[boundaries[2], boundaries[3]],
            template="plotly_white", title="Animation Preview")
