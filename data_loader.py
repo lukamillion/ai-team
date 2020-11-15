@@ -49,32 +49,6 @@ class DataLoader():
         self.FlipX = FlipX
         self.FlipY = FlipY
         
-        """
-        with open(path) as f:
-            df = df = pd.read_fwf(self.path, infer_nrows=10001, header=None)#, colspecs=colspecs, index_col=0)
-            df.columns = ['p', 'f', 'y', 'x', 'z', ] # Chang x and y because date is stored transposed
-        
-        l = len(df)
-        cor = np.vstack((np.ones(l)*(-1)**self.FlipX, np.ones(l)*(-1)**self.FlipY )).T
-        
-        df[['x', 'y']] = df[['x', 'y']].to_numpy()*cor
-                
-        self.data = df
-        
-        dfv = pd.DataFrame(index=df.index, columns=['vx', 'vy'])
-        
-        for p_id in df.p.unique():
-        
-            idx, _, pers = self.person(p_id, ret_vel=False, with_id=True)
-
-            vx, vy = self.get_vel_(pers, self.fps)
-
-            dfv['vx'][idx] = vx
-            dfv['vy'][idx] = vy
-        
-        
-        self.data = df.join(dfv)
-        """
 
         self.data = pd.DataFrame(columns=['p', 'f', 'x', 'y', 'z', 'vx', 'vy'])
         
