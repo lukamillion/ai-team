@@ -366,7 +366,7 @@ class DataLoader():
 
             if filled==0 or not omit_no_neighbors:
                 train_id.append(id_p)
-                trajectories.append(traj)
+                trajectories.append(traj.astype(np.float32))
                
 
         return train_id, trajectories
@@ -465,7 +465,7 @@ class DataLoader():
         steps_input, steps_truth = self.trajectory_2_steps(trajs, truth_with_vel)
 
         if shuffle:
-            print(len(steps_input),len(steps_truth), )
+
             p = np.random.permutation(len(steps_truth))
             #np.random.shuffle(steps_input)
             steps_input = steps_input[p]
@@ -478,14 +478,14 @@ class DataLoader():
         length = len(steps_input)
         train, test = int(0.6*length), int(0.8*length)
 
-        train_in = steps_input[:train]
-        train_truth = steps_truth[:train]
+        train_in = steps_input[:train].astype(np.float32)
+        train_truth = steps_truth[:train].astype(np.float32)
 
-        val_in = steps_input[train:test]
-        val_truth = steps_truth[train:test]
+        val_in = steps_input[train:test].astype(np.float32)
+        val_truth = steps_truth[train:test].astype(np.float32)
 
-        test_in = steps_input[test:]
-        test_truth = steps_truth[test:]
+        test_in = steps_input[test:].astype(np.float32)
+        test_truth = steps_truth[test:].astype(np.float32)
 
         return (train_in, train_truth), (val_in, val_truth), (test_in, test_truth)
     
@@ -594,7 +594,8 @@ class DataLoader():
         """
         if self.path[-3:] == "txt":
             with open(self.path) as f:
-                df = df = pd.read_fwf(self.path, infer_nrows=10001, header=None)#, colspecs=colspecs, index_col=0)
+                file_length = len(f.readlines(  ))
+                df = pd.read_fwf(self.path, infer_nrows=file_length, header=None)#, colspecs=colspecs, index_col=0)
                 df.columns = ['p', 'f', 'y', 'x', 'z', ] # Chang x and y because date is stored transposed
             
             l = len(df)
