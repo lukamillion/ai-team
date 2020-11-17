@@ -6,6 +6,10 @@ import copy
 
 import matplotlib.pyplot as plt
 
+
+import progressbar
+from progressbar import FormatLabel, Percentage, Bar, ETA
+
 """
 
     Dataloader utilities designed for the Pedestriandata of the Jülich Forschungszentrum:
@@ -49,32 +53,6 @@ class DataLoader():
         self.FlipX = FlipX
         self.FlipY = FlipY
         
-        """
-        with open(path) as f:
-            df = df = pd.read_fwf(self.path, infer_nrows=10001, header=None)#, colspecs=colspecs, index_col=0)
-            df.columns = ['p', 'f', 'y', 'x', 'z', ] # Chang x and y because date is stored transposed
-        
-        l = len(df)
-        cor = np.vstack((np.ones(l)*(-1)**self.FlipX, np.ones(l)*(-1)**self.FlipY )).T
-        
-        df[['x', 'y']] = df[['x', 'y']].to_numpy()*cor
-                
-        self.data = df
-        
-        dfv = pd.DataFrame(index=df.index, columns=['vx', 'vy'])
-        
-        for p_id in df.p.unique():
-        
-            idx, _, pers = self.person(p_id, ret_vel=False, with_id=True)
-
-            vx, vy = self.get_vel_(pers, self.fps)
-
-            dfv['vx'][idx] = vx
-            dfv['vy'][idx] = vy
-        
-        
-        self.data = df.join(dfv)
-        """
 
         self.data = pd.DataFrame(columns=['p', 'f', 'x', 'y', 'z', 'vx', 'vy'])
         
@@ -264,8 +242,8 @@ class DataLoader():
             p_ids, pos_vel, mask = self.grab_roi(p_ids, pos_vel, box=box, x_pad=x_pad, y_pad=y_pad, ret_mask=True    )
             idx = idx[mask]
             
-        if not p_id in p_ids:
-            raise IndexError("Person not present in selected ROI") 
+            if not p_id in p_ids:
+                raise IndexError("Person not present in selected ROI") 
 
         filled = False
         if fill:
@@ -274,6 +252,8 @@ class DataLoader():
             p_ids, pos_vel_nn= self.get_nn(p_ids, pos_vel, np.where(p_ids==p_id)[0], nn, fill=fill, mode=mode,  include_origin=include_origin)
 
         
+        if not ret_vel:
+            pos_vel_nn = pos_vel_nn[:,0:2]
 
         if not ret_full:
             return p_ids, pos_vel_nn
@@ -318,7 +298,7 @@ class DataLoader():
             return id_s[mask], pos_vel[mask], mask
 
 
-    def get_trajectories(self, nn, ret_vel=True, fill=True, mode="zero", omit_no_neighbors=False, box=((-300, 100), (300,0)), x_pad=50, y_pad=0,):
+    def get_trajectories(self, nn, ret_vel=True, fill=True, mode="zero", omit_no_neighbors=False, use_roi=False,  box=((-300, 100), (300,0)), x_pad=50, y_pad=0,):
         """
             Return A list with all trajectories through the corridor.
 
@@ -344,18 +324,24 @@ class DataLoader():
         # and corresponding ids
         train_id = []
         trajectories = []
+
+        pbar = progressbar.ProgressBar(maxval=self.persons)
+        pbar.start()
+
         for id_p in range(1, 1+self.persons):
+            frames, pos_vel = self.person(id_p)      
 
-            frames, pos_vel = self.person(id_p)        
-
-            roi_f, roi_p = self.grab_roi(frames, pos_vel, box, x_pad, y_pad, )
+            if use_roi:  
+                roi_f, roi_p = self.grab_roi(frames, pos_vel, box, x_pad, y_pad, )
+            else:
+                roi_f, roi_p = frames, pos_vel
 
             filled = 0
 
             traj = []
 
             for f in roi_f:
-                _, _, pos_neig, np_f = self.frame_nn(f, id_p, nn, ret_vel=ret_vel, fill=fill, mode=mode, box=box, x_pad=x_pad, y_pad=y_pad, ret_full=True)
+                _, _, pos_neig, np_f = self.frame_nn(f, id_p, nn, ret_vel=ret_vel, fill=fill, mode=mode, use_roi=use_roi, box=box, x_pad=x_pad, y_pad=y_pad, ret_full=True)
                 filled += np_f
                 traj.append( pos_neig.ravel())
 
@@ -366,8 +352,11 @@ class DataLoader():
 
             if filled==0 or not omit_no_neighbors:
                 train_id.append(id_p)
-                trajectories.append(traj)
+                trajectories.append(traj.astype(np.float32))
                
+            pbar.update(id_p)
+
+        pbar.finish()
 
         return train_id, trajectories
 
@@ -465,7 +454,7 @@ class DataLoader():
         steps_input, steps_truth = self.trajectory_2_steps(trajs, truth_with_vel)
 
         if shuffle:
-            print(len(steps_input),len(steps_truth), )
+
             p = np.random.permutation(len(steps_truth))
             #np.random.shuffle(steps_input)
             steps_input = steps_input[p]
@@ -476,16 +465,16 @@ class DataLoader():
         
 
         length = len(steps_input)
-        train, test = int(0.6*length), int(0.8*length)
+        train, test = int(split[0]/100.0*length), int(split[1]/100.0*length)
 
-        train_in = steps_input[:train]
-        train_truth = steps_truth[:train]
+        train_in = steps_input[:train].astype(np.float32)
+        train_truth = steps_truth[:train].astype(np.float32)
 
-        val_in = steps_input[train:test]
-        val_truth = steps_truth[train:test]
+        val_in = steps_input[train:test].astype(np.float32)
+        val_truth = steps_truth[train:test].astype(np.float32)
 
-        test_in = steps_input[test:]
-        test_truth = steps_truth[test:]
+        test_in = steps_input[test:].astype(np.float32)
+        test_truth = steps_truth[test:].astype(np.float32)
 
         return (train_in, train_truth), (val_in, val_truth), (test_in, test_truth)
     
@@ -566,8 +555,8 @@ class DataLoader():
         if vel is None:
             vel = np.empty((l, 2))
 
-        data = np.hstack((np.ones((l,1))*id, frame.reshape((l,1)), traj, np.zeros((l,1)), vel) )
 
+        data = np.hstack((np.ones((l,1))*id, frame.reshape((l,1)), traj, np.zeros((l,1)), vel) )
         self.data = self.data.append( pd.DataFrame( data, columns=['p', 'f', 'x', 'y', 'z', 'vx', 'vy']),  ignore_index=True )
 
 
@@ -594,7 +583,8 @@ class DataLoader():
         """
         if self.path[-3:] == "txt":
             with open(self.path) as f:
-                df = df = pd.read_fwf(self.path, infer_nrows=10001, header=None)#, colspecs=colspecs, index_col=0)
+                file_length = len(f.readlines(  ))
+                df = pd.read_fwf(self.path, infer_nrows=file_length, header=None)#, colspecs=colspecs, index_col=0)
                 df.columns = ['p', 'f', 'y', 'x', 'z', ] # Chang x and y because date is stored transposed
             
             l = len(df)
