@@ -396,7 +396,17 @@ class DataLoader():
         return traj+aug
 
 
-    def trajectory_2_steps(self, trajectories, truth_with_vel=False):
+    def batch_(self, arr, n):
+        """ yiels successive n-sized batches from arr """
+        out = []
+        for i in range(len(arr)-1-n): 
+            out.append(arr[i:i+n].ravel())
+
+        return np.vstack(out)
+
+
+
+    def trajectory_2_steps(self, trajectories, step_nr=1, truth_with_vel=False):
         """
             
             Stacks multiple trajectories on top of each other
@@ -404,6 +414,7 @@ class DataLoader():
 
             Param:
                 trajectories: List of multiple trajectories
+                step_nr: number of steps given as input for each person
                 truth_with_vel: if true velocity is encoded in the data 
 
             return: 
@@ -417,14 +428,23 @@ class DataLoader():
         inputs = []
         truths = []
 
-        for t in trajectories:
-            inputs.append(t[:-1])
-            truths.append(t[1:, :2+2*truth_with_vel])
+        if step_nr == 1:
+            for t in trajectories:
+                inputs.append(t[:-1])
+                truths.append(t[1:, :2+2*truth_with_vel])
 
-        return np.vstack(inputs), np.vstack(truths)
+            return np.vstack(inputs), np.vstack(truths)
+
+        else:
+            for t in trajectories:
+                inputs.append(self.batch_(t, step_nr))
+                truths.append(t[1:, :2+2*truth_with_vel])
+
+            return np.vstack(inputs), np.vstack(truths)
 
 
-    def get_train_data(self, nn, augmentation=[], truth_with_vel=False, split=(60, 20, 20), shuffle=True, **kwargs):
+
+    def get_train_data(self, nn, step_nr=1, augmentation=[], truth_with_vel=False, split=(60, 20, 20), shuffle=True, **kwargs):
         """
             
             Get train, validation and test data from the dataset. 
@@ -451,10 +471,9 @@ class DataLoader():
 
         print("with augmentation {} trajectories".format(len(trajs)))
 
-        steps_input, steps_truth = self.trajectory_2_steps(trajs, truth_with_vel)
+        steps_input, steps_truth = self.trajectory_2_steps(trajs, step_nr, truth_with_vel)
 
         if shuffle:
-
             p = np.random.permutation(len(steps_truth))
             #np.random.shuffle(steps_input)
             steps_input = steps_input[p]
