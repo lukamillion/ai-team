@@ -232,14 +232,14 @@ class DataLoader():
         idx, p_ids, pos_vel = self.frame(f_id, with_id=True)
         
         if not p_id in p_ids:
-            raise IndexError("Person not present in Frame")    
+            raise IndexError("Person {} not present in Frame {}".format(p_id, f_id))    
         
         if use_roi:
             p_ids, pos_vel, mask = self.grab_roi(p_ids, pos_vel, box=box, x_pad=x_pad, y_pad=y_pad, ret_mask=True    )
             idx = idx[mask]
             
         if not p_id in p_ids:
-            raise IndexError("Person not present in selected ROI") 
+                raise  IndexError("Person {} not present in selected ROI (frame {})".format(p_id,   f_id )) 
 
         filled = False
         if fill:
@@ -250,9 +250,9 @@ class DataLoader():
         
 
         if not ret_full:
-            return p_ids, pos_vel_nn
+            return p_ids, pos_vel_nn.astype(np.float)
         else:
-            return idx, p_ids, pos_vel_nn, filled
+            return idx, p_ids, pos_vel_nn.astype(np.float), filled
 
 
     def grab_roi(self, id_s, pos_vel, box=((-300, 100), (300,0)), x_pad=50, y_pad=0, ret_mask=False ):
