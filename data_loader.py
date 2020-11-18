@@ -6,6 +6,10 @@ import copy
 
 import matplotlib.pyplot as plt
 
+
+import progressbar
+from progressbar import FormatLabel, Percentage, Bar, ETA
+
 """
 
     Dataloader utilities designed for the Pedestriandata of the Jülich Forschungszentrum:
@@ -238,8 +242,9 @@ class DataLoader():
             p_ids, pos_vel, mask = self.grab_roi(p_ids, pos_vel, box=box, x_pad=x_pad, y_pad=y_pad, ret_mask=True    )
             idx = idx[mask]
             
-        if not p_id in p_ids:
+            if not p_id in p_ids:
                 raise  IndexError("Person {} not present in selected ROI (frame {})".format(p_id,   f_id )) 
+
 
         filled = False
         if fill:
@@ -248,6 +253,8 @@ class DataLoader():
             p_ids, pos_vel_nn= self.get_nn(p_ids, pos_vel, np.where(p_ids==p_id)[0], nn, fill=fill, mode=mode,  include_origin=include_origin)
 
         
+        if not ret_vel:
+            pos_vel_nn = pos_vel_nn[:,0:2]
 
         if not ret_full:
             return p_ids, pos_vel_nn.astype(np.float)
@@ -292,7 +299,7 @@ class DataLoader():
             return id_s[mask], pos_vel[mask], mask
 
 
-    def get_trajectories(self, nn, ret_vel=True, fill=True, mode="zero", omit_no_neighbors=False, box=((-300, 100), (300,0)), x_pad=50, y_pad=0,):
+    def get_trajectories(self, nn, ret_vel=True, fill=True, mode="zero", omit_no_neighbors=False, use_roi=False,  box=((-300, 100), (300,0)), x_pad=50, y_pad=0,):
         """
             Return A list with all trajectories through the corridor.
 
@@ -318,18 +325,24 @@ class DataLoader():
         # and corresponding ids
         train_id = []
         trajectories = []
+
+        pbar = progressbar.ProgressBar(maxval=self.persons)
+        pbar.start()
+
         for id_p in range(1, 1+self.persons):
+            frames, pos_vel = self.person(id_p)      
 
-            frames, pos_vel = self.person(id_p)        
-
-            roi_f, roi_p = self.grab_roi(frames, pos_vel, box, x_pad, y_pad, )
+            if use_roi:  
+                roi_f, roi_p = self.grab_roi(frames, pos_vel, box, x_pad, y_pad, )
+            else:
+                roi_f, roi_p = frames, pos_vel
 
             filled = 0
 
             traj = []
 
             for f in roi_f:
-                _, _, pos_neig, np_f = self.frame_nn(f, id_p, nn, ret_vel=ret_vel, fill=fill, mode=mode, box=box, x_pad=x_pad, y_pad=y_pad, ret_full=True)
+                _, _, pos_neig, np_f = self.frame_nn(f, id_p, nn, ret_vel=ret_vel, fill=fill, mode=mode, use_roi=use_roi, box=box, x_pad=x_pad, y_pad=y_pad, ret_full=True)
                 filled += np_f
                 traj.append( pos_neig.ravel())
 
@@ -342,6 +355,9 @@ class DataLoader():
                 train_id.append(id_p)
                 trajectories.append(traj.astype(np.float32))
                
+            pbar.update(id_p)
+
+        pbar.finish()
 
         return train_id, trajectories
 
@@ -381,7 +397,17 @@ class DataLoader():
         return traj+aug
 
 
-    def trajectory_2_steps(self, trajectories, truth_with_vel=False):
+    def batch_(self, arr, n):
+        """ yiels successive n-sized batches from arr """
+        out = []
+        for i in range(len(arr)-1-n): 
+            out.append(arr[i:i+n].ravel())
+
+        return np.vstack(out)
+
+
+
+    def trajectory_2_steps(self, trajectories, step_nr=1, truth_with_vel=False):
         """
             
             Stacks multiple trajectories on top of each other
@@ -389,6 +415,7 @@ class DataLoader():
 
             Param:
                 trajectories: List of multiple trajectories
+                step_nr: number of steps given as input for each person
                 truth_with_vel: if true velocity is encoded in the data 
 
             return: 
@@ -402,14 +429,23 @@ class DataLoader():
         inputs = []
         truths = []
 
-        for t in trajectories:
-            inputs.append(t[:-1])
-            truths.append(t[1:, :2+2*truth_with_vel])
+        if step_nr == 1:
+            for t in trajectories:
+                inputs.append(t[:-1])
+                truths.append(t[1:, :2+2*truth_with_vel])
 
-        return np.vstack(inputs), np.vstack(truths)
+            return np.vstack(inputs), np.vstack(truths)
+
+        else:
+            for t in trajectories:
+                inputs.append(self.batch_(t, step_nr))
+                truths.append(t[1:, :2+2*truth_with_vel])
+
+            return np.vstack(inputs), np.vstack(truths)
 
 
-    def get_train_data(self, nn, augmentation=[], truth_with_vel=False, split=(60, 20, 20), shuffle=True, **kwargs):
+
+    def get_train_data(self, nn, step_nr=1, augmentation=[], truth_with_vel=False, split=(60, 20, 20), shuffle=True, **kwargs):
         """
             
             Get train, validation and test data from the dataset. 
@@ -436,13 +472,12 @@ class DataLoader():
 
         print("with augmentation {} trajectories".format(len(trajs)))
 
-        steps_input, steps_truth = self.trajectory_2_steps(trajs, truth_with_vel)
+        steps_input, steps_truth = self.trajectory_2_steps(trajs, step_nr, truth_with_vel)
 
         print(steps_input, "shape", steps_input.shape)
         print(steps_truth, "shape", steps_truth.shape)
 
         if shuffle:
-
             p = np.random.permutation(len(steps_truth))
             #np.random.shuffle(steps_input)
             steps_input = steps_input[p]
@@ -453,7 +488,7 @@ class DataLoader():
         
 
         length = len(steps_input)
-        train, test = int(0.6*length), int(0.8*length)
+        train, test = int(split[0]/100.0*length), int(split[1]/100.0*length)
 
         train_in = steps_input[:train].astype(np.float32)
         train_truth = steps_truth[:train].astype(np.float32)
@@ -543,8 +578,8 @@ class DataLoader():
         if vel is None:
             vel = np.empty((l, 2))
 
-        data = np.hstack((np.ones((l,1))*id, frame.reshape((l,1)), traj, np.zeros((l,1)), vel) )
 
+        data = np.hstack((np.ones((l,1))*id, frame.reshape((l,1)), traj, np.zeros((l,1)), vel) )
         self.data = self.data.append( pd.DataFrame( data, columns=['p', 'f', 'x', 'y', 'z', 'vx', 'vy']),  ignore_index=True )
 
 
