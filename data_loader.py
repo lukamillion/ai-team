@@ -489,7 +489,6 @@ class DataLoader():
 
         length = len(steps_input)
         train, test = int(split[0]/100.0*length), int(split[2]/100.0*length)
-        print(train, test)
 
         train_in = steps_input[:train].astype(np.float32)
         train_truth = steps_truth[:train].astype(np.float32)
