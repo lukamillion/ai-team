@@ -72,8 +72,8 @@ class DataLoader():
         """
         T = 1/ (fps if fps>0 else self.fps)
 
-        vx = np.diff( pos[:,0], append=pos[-1,0] ) / T
-        vy = np.diff( pos[:,1], append=pos[-1,1] ) / T
+        vx = -np.diff( pos[:,0], append=pos[-1,0] ) / T
+        vy = -np.diff( pos[:,1], append=pos[-1,1] ) / T
         
         return vx, vy
         
@@ -437,6 +437,9 @@ class DataLoader():
         print("with augmentation {} trajectories".format(len(trajs)))
 
         steps_input, steps_truth = self.trajectory_2_steps(trajs, truth_with_vel)
+
+        print(steps_input, "shape", steps_input.shape)
+        print(steps_truth, "shape", steps_truth.shape)
 
         if shuffle:
 
