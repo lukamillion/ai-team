@@ -76,8 +76,8 @@ class DataLoader():
         """
         T = 1/ (fps if fps>0 else self.fps)
 
-        vx = -np.diff( pos[:,0], append=pos[-1,0] ) / T
-        vy = -np.diff( pos[:,1], append=pos[-1,1] ) / T
+        vx = np.diff( pos[:,0], append=pos[-1,0] ) / T
+        vy = np.diff( pos[:,1], append=pos[-1,1] ) / T
         
         return vx, vy
         
@@ -243,8 +243,7 @@ class DataLoader():
             idx = idx[mask]
             
             if not p_id in p_ids:
-                raise  IndexError("Person {} not present in selected ROI (frame {})".format(p_id,   f_id )) 
-
+                raise IndexError("Person {} not present in selected ROI (frame {})".format(p_id,   f_id )) 
 
         filled = False
         if fill:
@@ -299,7 +298,7 @@ class DataLoader():
             return id_s[mask], pos_vel[mask], mask
 
 
-    def get_trajectories(self, nn, ret_vel=True, fill=True, mode="zero", omit_no_neighbors=False, use_roi=False,  box=((-300, 100), (300,0)), x_pad=50, y_pad=0,):
+    def get_trajectories(self, nn, ret_vel=True, nn_vel=True, fill=True, mode="zero", omit_no_neighbors=False, use_roi=False,  box=((-300, 100), (300,0)), x_pad=50, y_pad=0,):
         """
             Return A list with all trajectories through the corridor.
 
@@ -344,6 +343,13 @@ class DataLoader():
             for f in roi_f:
                 _, _, pos_neig, np_f = self.frame_nn(f, id_p, nn, ret_vel=ret_vel, fill=fill, mode=mode, use_roi=use_roi, box=box, x_pad=x_pad, y_pad=y_pad, ret_full=True)
                 filled += np_f
+
+                if (not nn_vel):
+                    if (not ret_vel):
+                        raise Exception("ret_vel must be true for nn_vel to work properly")
+                    pos_neig = np.concatenate((pos_neig[0,:], pos_neig[1:,0:2].ravel()))
+                    
+
                 traj.append( pos_neig.ravel())
 
             if len(traj)==0:
