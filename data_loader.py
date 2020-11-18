@@ -474,9 +474,6 @@ class DataLoader():
 
         steps_input, steps_truth = self.trajectory_2_steps(trajs, step_nr, truth_with_vel)
 
-        print(steps_input, "shape", steps_input.shape)
-        print(steps_truth, "shape", steps_truth.shape)
-
         if shuffle:
             p = np.random.permutation(len(steps_truth))
             #np.random.shuffle(steps_input)
