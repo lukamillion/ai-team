@@ -343,12 +343,9 @@ class DataLoader():
             for f in roi_f:
                 _, _, pos_neig, np_f = self.frame_nn(f, id_p, nn, ret_vel=ret_vel, fill=fill, mode=mode, use_roi=use_roi, box=box, x_pad=x_pad, y_pad=y_pad, ret_full=True)
                 filled += np_f
-
-                if (not nn_vel):
-                    if (not ret_vel):
-                        raise Exception("ret_vel must be true for nn_vel to work properly")
+                
+                 if ((not nn_vel) & ret_vel):
                     pos_neig = np.concatenate((pos_neig[0,:], pos_neig[1:,0:2].ravel()))
-                    
 
                 traj.append( pos_neig.ravel())
 
