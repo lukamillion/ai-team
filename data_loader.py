@@ -243,8 +243,7 @@ class DataLoader():
             idx = idx[mask]
             
             if not p_id in p_ids:
-                raise  IndexError("Person {} not present in selected ROI (frame {})".format(p_id,   f_id )) 
-
+                raise IndexError("Person {} not present in selected ROI (frame {})".format(p_id,   f_id )) 
 
         filled = False
         if fill:
@@ -299,7 +298,7 @@ class DataLoader():
             return id_s[mask], pos_vel[mask], mask
 
 
-    def get_trajectories(self, nn, ret_vel=True, fill=True, mode="zero", omit_no_neighbors=False, use_roi=False,  box=((-300, 100), (300,0)), x_pad=50, y_pad=0,):
+    def get_trajectories(self, nn, ret_vel=True, nn_vel=True, fill=True, mode="zero", omit_no_neighbors=False, use_roi=False,  box=((-300, 100), (300,0)), x_pad=50, y_pad=0,):
         """
             Return A list with all trajectories through the corridor.
 
@@ -344,6 +343,10 @@ class DataLoader():
             for f in roi_f:
                 _, _, pos_neig, np_f = self.frame_nn(f, id_p, nn, ret_vel=ret_vel, fill=fill, mode=mode, use_roi=use_roi, box=box, x_pad=x_pad, y_pad=y_pad, ret_full=True)
                 filled += np_f
+                
+                if ((not nn_vel) & ret_vel):
+                    pos_neig = np.concatenate((pos_neig[0,:], pos_neig[1:,0:2].ravel()))
+
                 traj.append( pos_neig.ravel())
 
             if len(traj)==0:
@@ -485,16 +488,16 @@ class DataLoader():
         
 
         length = len(steps_input)
-        train, test = int(split[0]/100.0*length), int(split[1]/100.0*length)
+        train, test = int(split[0]/100.0*length), int(split[2]/100.0*length)
 
         train_in = steps_input[:train].astype(np.float32)
         train_truth = steps_truth[:train].astype(np.float32)
 
-        val_in = steps_input[train:test].astype(np.float32)
-        val_truth = steps_truth[train:test].astype(np.float32)
+        val_in = steps_input[train:(length - test)].astype(np.float32)
+        val_truth = steps_truth[train:(length - test)].astype(np.float32)
 
-        test_in = steps_input[test:].astype(np.float32)
-        test_truth = steps_truth[test:].astype(np.float32)
+        test_in = steps_input[(length - test):].astype(np.float32)
+        test_truth = steps_truth[(length - test):].astype(np.float32)
 
         return (train_in, train_truth), (val_in, val_truth), (test_in, test_truth)
     
