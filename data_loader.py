@@ -96,7 +96,7 @@ class DataLoader():
                 frame: return frame count
                 pos_vel: returns [x, y, (vx, vy)] as 2d array with time in axis 0 
         """
-        self.temp = self.data[self.data['p'] == id]
+        self.temp = self.data[self.data['p'] == id].sort_values('f')
         
         if ret_vel:
             ret_col = ['x', 'y', 'vx', 'vy' ]
