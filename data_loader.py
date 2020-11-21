@@ -104,10 +104,10 @@ class DataLoader():
             ret_col = ['x', 'y']
         
         if not with_id:
-            return self.temp['f'].to_numpy(), self.temp[ret_col].to_numpy()
+            return self.temp['f'].to_numpy(), self.temp[ret_col].to_numpy().astype(np.float)
         else:
             idx = self.temp.index
-            return idx, self.temp['f'].to_numpy(), self.temp[ret_col].to_numpy()
+            return idx, self.temp['f'].to_numpy(), self.temp[ret_col].to_numpy().astype(np.float)
     
     
     def frame(self, id, ret_vel=True, with_id=False):
@@ -132,10 +132,10 @@ class DataLoader():
             ret_col = ['x', 'y']
         
         if not with_id:
-            return self.temp['p'].to_numpy(), self.temp[ret_col].to_numpy()
+            return self.temp['p'].to_numpy(), self.temp[ret_col].to_numpy().astype(np.float)
         else:
             idx = self.temp.index
-            return idx, self.temp['p'].to_numpy(), self.temp[ret_col].to_numpy()
+            return idx, self.temp['p'].to_numpy(), self.temp[ret_col].to_numpy().astype(np.float)
     
     
     def get_nn(self, pids, pos, idx, nn,  fill=True, mode="zero", include_origin=True):
@@ -207,9 +207,9 @@ class DataLoader():
                 pids = z
         
         if fill:
-            return pids, pos, filled
+            return pids, pos.astype(np.float), filled
         else:
-            return pids, pos
+            return pids, pos.astype(np.float)
         
     
     def frame_nn(self, f_id, p_id, nn=4, ret_vel=True, fill=True, mode="zero", use_roi=True, include_origin=True, ret_full=False, box=((-300, 100), (300,0)), x_pad=50, y_pad=0):
