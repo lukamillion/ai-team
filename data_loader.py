@@ -324,7 +324,7 @@ class DataLoader():
         # and corresponding ids
         train_id = []
         trajectories = []
-
+        print('', end='', flush=True)
         pbar = progressbar.ProgressBar(maxval=self.persons)
         pbar.start()
 
@@ -365,14 +365,15 @@ class DataLoader():
         return train_id, trajectories
 
 
-    def flip_x(self, traj, x_center=0, use_vel=True):
+    def flip_x(self, traj, x_center=0, use_vel=True, ):
         """
             Flip the trajectories around the mirror axis at x_center.
 
             Param: 
                 traj: Data to process
                 x_center: center oft the mirror axis 
-                use_vel: if true the data is encoding velocity
+                use_vel: if true the data is encoding velocity for origin
+                nn_vel: if true the neighbors use velocity
 
             return: 
                 traj: traj and flipped traj length increases by a factor of 2

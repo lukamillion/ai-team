@@ -9,7 +9,12 @@ from data_loader import DataLoader
 
 
 
+# accept sim parameter dicts
+
 class Agent():
+    """
+        An agent that has a netwerk stored. It walks based on the given neighbors one Time step.
+    """
     def __init__(self, model, pos_vel_0, id=100, frame_0=0, T=16, truth_with_vel=False, device="cpu"):
         
         
@@ -31,20 +36,29 @@ class Agent():
         # position and velocity data
         self.frames = [frame_0]
         self.traj = [pos_vel_0]
+
+        self.dds = DataLoader(None)
                 
     @property 
     def pos(self):
+        # return the current postition of the agent
         return self.traj[-1][ :2]
     
     @property
     def vel(self):
+        # return the current velocity of the agent
         return self.traj[-1][ 2:]
     
-    def run(self, neighbors):
+    def step_mp(self, frame, nn, mode):
+        _, neighbors = self.dds.get_nn(frame[0], frame[1], np.where(in_frame==self.id)[0],
+                                           nn,
+                                           mode=mode   )
         return self.step(neighbors)
     
     def step(self, neighbors):
-        
+        """
+            Perform one time step 
+        """
         with torch.no_grad():
             x_sim = torch.from_numpy(neighbors).to(self.device)
 
@@ -67,7 +81,8 @@ class Agent():
 
 
 class Engine():
-    def __init__(self, ds, agents=[], nn=10, stop_agent=False, mode="wraps", exportpath="sim.csv"):
+    def __init__(self, ds, agents=[], nn=10, stop_agent=False, mode="wraps", ret_vel=True, nn_vel=True,
+                 truth_with_vel=True, exportpath="sim.csv"):
         
         self.ds = DataLoader(exportpath)
         self.ds.copy(ds)
@@ -75,6 +90,9 @@ class Engine():
         self.agents = agents
         
         self.nn = nn
+        self.ret_vel = ret_vel
+        self.nn_vel = nn_vel
+        self.truth_with_vel = truth_with_vel
         self.mode = mode
         self.stop_agent = stop_agent
         
@@ -82,19 +100,27 @@ class Engine():
         
     def step(self, ):
         
-        in_frame, pos_vel_f = self.ds.frame(self.cur_f)
+        in_frame, pos_vel_f = self.ds.frame(self.cur_f, ret_vel=self.ret_vel)
         for a in self.agents:
-            if a.pos[0]>500 and self.stop_agent:
+            if a.pos[0]>350 and self.stop_agent:
                 continue
             
             if a.id not in in_frame :
                 continue
             #_, pos_vel = self.ds.frame_nn(self.cur_f, a.id, nn=self.nn, use_roi=False, mode=self.mode)
-            _, pos_vel, _ = self.ds.get_nn(in_frame, pos_vel_f, np.where(in_frame==a.id)[0],
+            _, pos_velnn, _ = self.ds.get_nn(in_frame, pos_vel_f, np.where(in_frame==a.id)[0],
                                            self.nn,
                                            mode=self.mode   )
             
-            n_pos_vel = a.step(pos_vel.copy().ravel()).copy()
+            pos_vel = pos_velnn.copy()
+
+            if ((not self.nn_vel) & self.ret_vel):
+                pos_vel = np.concatenate((pos_vel[0,:], pos_vel[1:,0:2].ravel()))
+            else:
+                pos_vel = pos_vel.ravel()
+
+
+            n_pos_vel = a.step(pos_vel).copy()
             
             
             n_pos_vel [[0, 1]] = n_pos_vel [[1, 0]]
@@ -118,6 +144,7 @@ class Engine():
     def run(self, start_f, stop_f, ):
         self.cur_f = start_f
         print("sim from : {} to {}".format(start_f, stop_f))
+        print('', end='', flush=True)
         widgets = [FormatLabel(''), ' ', Percentage(), ' ', Bar(), ' ', ETA()]
         pbar = progressbar.ProgressBar(widgets=widgets, maxval=stop_f)
         pbar.start()
