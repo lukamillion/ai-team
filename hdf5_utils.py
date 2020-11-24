@@ -4,6 +4,11 @@ import os
 import torch
 import time 
 import collections
+import numpy as np
+
+class HDF5Error(Exception):
+  pass
+
 
 
 def fmt_fsize(num, suffix='B'):
@@ -138,11 +143,21 @@ def load_trainingdata(file_name):
 """
 
 
-def load_torch(f_name, MODEL_class):
+def load_torch(f_name, MODEL_class, prefix='model_1'):
     
-    db = h5py.File(f_name, 'r')
+    database = h5py.File(f_name, 'r')
+
+
     
-    params = load_attrs(db)
+    params = load_attrs(database)
+
+    if params['mode']=='multi_model':
+      print("multi_model")
+      db = database[prefix]
+      params = load_attrs(db)
+    else:
+      db = database
+
     db_params = load_attrs(db['dataset'])
     
     mod = db['model']
@@ -154,7 +169,8 @@ def load_torch(f_name, MODEL_class):
     params['output_s'] = mod_params['output_s'],
     params['device'] = torch.device(params['device'])
     
-    
+    print(mod_params)
+
     model = MODEL_class(mod_params['input_s'], mod_params['hidden_s'], mod_params['output_s'])
     
     
@@ -163,7 +179,7 @@ def load_torch(f_name, MODEL_class):
         layer_param = load_attrs(mod[l])
         stat[l] = torch.from_numpy(mod.get(l).value,).to(layer_param['device'])
     
-    db.close()
+    database.close()
     
     model.load_state_dict(stat)
     
@@ -172,15 +188,59 @@ def load_torch(f_name, MODEL_class):
     return model, params
 
 
-def save_torch(model, optimizer, f_name, param, crator="zehndiii"):
+def save_torch(model, optimizer, f_name, param, scan=False, prefix='', creator="zehndiii"):
     #TODO Apend mode
-    #TODO no overwrite
+    
     # TODO support comments
     
-    db = h5py.File(f_name, 'w')
+    if os.path.isfile(f_name):
+      if scan:
+        database = h5py.File(f_name, 'a')
+
+      else:
+        raise HDF5Error( "Cannot write to file that already exists: {}".format(f_name) )
+    else:
+      database = h5py.File(f_name, 'w')
     
+
+    if scan:
+      if prefix=="":
+        database.close()
+        raise HDF5Error("Cannot write model with no name specified" )
+
+      par = load_attrs(database, )
+
+      if par == {}:
+        par['mode'] = "multi_model"
+        par['models'] = np.array(["dummy"], dtype=object)
+
+
+      elif par['mode']!="multi_model":
+        database.close()
+        raise HDF5Error("You cannot append to a single_model HDF5 dump!")
+
+      if prefix.encode("ascii", "ignore") in par['models']:
+        database.close()
+        raise HDF5Error("Cannot replace model that already exists: {}".format(prefix))
+
+     
+      par['models'] = [n.encode("ascii", "ignore") for n in np.append(par['models'] ,  prefix)]
+
+      write_attrs(database, par)
+
+      db = database.create_group(prefix)
+
+
+      # set mode
+      # write model list
+    else:
+      print("simpe")
+      db = database
+      
+
     # write general settings
-    write_attrs(db, {'creator':"zehndiii",       # write general attributes
+    write_attrs(db, { 'mode': 'single_model',
+                      'creator':creator,       # write general attributes
                       'date':time.ctime(),
                       'epochs':param['epochs'],
                       'batch_size':param['batch_size'],
@@ -188,13 +248,14 @@ def save_torch(model, optimizer, f_name, param, crator="zehndiii"):
                       'lr':param['lr'],
                       'decay':param['decay'],
                       'decay_step':param['decay_step'],
-                      'device':str(param['device'])
+                      'device':str(param['device']),
+                      'msg':param['msg'],
                        })
     
     
 
     # write dataset settings
-    dataset = db.create_group('/dataset')
+    dataset = db.create_group('dataset')
     
     write_attrs(dataset, param['dataset'])
     """
@@ -210,7 +271,7 @@ def save_torch(model, optimizer, f_name, param, crator="zehndiii"):
     """
     
     # write model and settings
-    mod = db.create_group('/model')
+    mod = db.create_group('model')
    
     stat = model.state_dict()
     
@@ -235,7 +296,7 @@ def save_torch(model, optimizer, f_name, param, crator="zehndiii"):
                          'layers':layers,
                          })
     
-    db.close()
+    database.close()
 
     
 

@@ -15,7 +15,7 @@ class Agent():
     """
         An agent that has a netwerk stored. It walks based on the given neighbors one Time step.
     """
-    def __init__(self, model, pos_vel_0, id=100, frame_0=0, T=16, truth_with_vel=False, device="cpu"):
+    def __init__(self, model, pos_vel_0, id=100, frame_0=0, FPS=16, truth_with_vel=False, device="cpu"):
         
         
         self.id = id
@@ -31,7 +31,7 @@ class Agent():
         self.pos_vel_0 = pos_vel_0.copy()
         self.frame_c = frame_0
         
-        self.T = T
+        self.FPS = FPS
         
         # position and velocity data
         self.frames = [frame_0]
@@ -68,7 +68,7 @@ class Agent():
             v_sim = y_sim[2:]
             y_sim = y_sim[:2]
         else:
-            v_sim = (y_sim[:2]-x_sim[:2])/self.T
+            v_sim = (y_sim[:2]-x_sim[:2])*self.FPS
         
         self.traj.append( np.concatenate( (y_sim.cpu().detach().numpy(), v_sim.cpu().detach().numpy()) ) )
         self.frame_c +=1
@@ -82,7 +82,7 @@ class Agent():
 
 class Engine():
     def __init__(self, ds, agents=[], nn=10, stop_agent=False, mode="wraps", ret_vel=True, nn_vel=True,
-                 truth_with_vel=True, exportpath="sim.csv"):
+                 truth_with_vel=True, downsample=1, exportpath="sim.csv"):
         
         self.ds = DataLoader(exportpath)
         self.ds.copy(ds)
@@ -94,6 +94,7 @@ class Engine():
         self.nn_vel = nn_vel
         self.truth_with_vel = truth_with_vel
         self.mode = mode
+        self.downsample = downsample
         self.stop_agent = stop_agent
         
         self.cur_f = 0
@@ -127,10 +128,11 @@ class Engine():
            
             
             # TODO write to ds
-            entry = np.concatenate( ([a.id], [self.cur_f+1], n_pos_vel[:2], [0], n_pos_vel[2:] ) )
+            entry = np.concatenate( ([a.id], [self.cur_f+self.downsample], n_pos_vel[:2], [0], n_pos_vel[2:] ) )
             
-            if len(self.ds.data[(self.ds.data["p"]==a.id) & (self.ds.data["f"]==self.cur_f+1)]):
-                self.ds.data[(self.ds.data["p"]==a.id) & (self.ds.data["f"]==self.cur_f+1)] = [entry]
+            if len(self.ds.data[(self.ds.data["p"]==a.id) & (self.ds.data["f"]==self.cur_f+self.downsample)]):
+                if self.downsample>1: print("WARNIG: you may have additional stepps in dset, -> please remove old agent befor simulating.")
+                self.ds.data[(self.ds.data["p"]==a.id) & (self.ds.data["f"]==self.cur_f+self.downsample)] = [entry]
             else:
                 self.ds.data = self.ds.data.append(pd.DataFrame([entry],
                                                                 columns=list(self.ds.data)),

@@ -449,7 +449,7 @@ class DataLoader():
 
 
 
-    def get_train_data(self, nn, step_nr=1, augmentation=[], truth_with_vel=False, split=(60, 20, 20), shuffle=True, **kwargs):
+    def get_train_data(self, nn, step_nr=1, downsample=1, augmentation=[], truth_with_vel=False, split=(60, 20, 20), shuffle=True, **kwargs):
         """
             
             Get train, validation and test data from the dataset. 
@@ -475,6 +475,23 @@ class DataLoader():
             trajs = aug(trajs)
 
         print("with augmentation {} trajectories".format(len(trajs)))
+
+
+        print(len(trajs), trajs[-1].shape)
+        #print(trajs.shape)
+        if downsample > 1:
+            arr = []
+            for tr in trajs:
+                #print(tr.shape)
+                for i in range(downsample):
+                    arr.append(tr[i::downsample])
+                #print(len(arr), arr[-2].shape, arr[-1].shape)
+            
+
+
+            trajs = arr #np.hstack(arr)
+
+        print("with downsample {} trajectories".format(len(trajs)))
 
         steps_input, steps_truth = self.trajectory_2_steps(trajs, step_nr, truth_with_vel)
 
