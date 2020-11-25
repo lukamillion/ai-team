@@ -547,6 +547,7 @@ class DataLoader():
         plt.legend(loc = 4)
         plt.show()
 
+
     def remove_person(self, id):
         """
             Removes the person with the given id from the dataset. 
@@ -599,6 +600,23 @@ class DataLoader():
 
         data = np.hstack((np.ones((l,1))*id, frame.reshape((l,1)), traj, np.zeros((l,1)), vel) )
         self.data = self.data.append( pd.DataFrame( data, columns=['p', 'f', 'x', 'y', 'z', 'vx', 'vy']),  ignore_index=True )
+
+
+    def interpolate_person(self, id):
+        """
+        Interpolate the person linearly for every missing time step (only between)
+        """
+        temp = self.data[(self.data['p']==id)]
+
+        frames = temp['f'].to_numpy()
+        fmin, fmax = int(frames.min()), int(frames.max())
+
+        for f in range(fmin, fmax):
+            if not f in frames.astype(int):
+                self.data = self.data.append(pd.DataFrame([np.array([id, f, np.nan,  np.nan,  0,  np.nan,  np.nan])], columns=list(self.data)), ignore_index=True)
+            
+        self.data = self.data.sort_values(["p", "f"], ascending = (True, True))
+        self.data = self.data.interpolate()
 
 
     def copy(self, data):

@@ -30,7 +30,7 @@ def plotTraj(loader, boundaries, people=None, ai=None, legend=False, title="Traj
     ax1 = fig.add_subplot(1,1,1)
     
     if people is None:
-        people = np.arange(loader.data['p'].min(), loader.data['p'].max())
+        people = loader.data['p'].unique()
 
 
     if ai is None:
@@ -64,7 +64,7 @@ def plotTraj(loader, boundaries, people=None, ai=None, legend=False, title="Traj
     plt.show()
     
 #Location Animation
-def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc_anim.gif", save=False, step=1, fps=16, title="Location Animation", useFFMPEG=False):
+def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc_anim.gif", save=False, step=1, fps=16, interp=None, title="Location Animation", useFFMPEG=False):
     """ Animate the Trajectory as lines
 
         loader:     loader objekct that stores the data
@@ -86,6 +86,7 @@ def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc
         people, temp = loader.frame(i, ret_vel=False, with_id=False)
         data.append(temp)
         ai_data.append(temp[np.isin(people, ai)])
+
         
     #Set the figure for the animation framework
     fig = plt.figure(figsize = (10,6))
@@ -144,7 +145,9 @@ def animateTraj(loader, frame_start, frame_stop, boundaries, ai=None, path="traj
     person = []
     colors = []
 
-    people_count = int(loader.data['p'].max() - loader.data['p'].min() + 1)
+    p_ = loader.data['p'].unique()
+    people_count = int(p_[p_ < 1000].max())
+    print(people_count)
 
     for i in np.arange(frame_start, frame_stop, step):
         data.append(loader.frame(i, ret_vel=False, with_id=False)[1])
@@ -175,7 +178,7 @@ def animateTraj(loader, frame_start, frame_stop, boundaries, ai=None, path="traj
             vals.append([[], []])
     else:
         for i in range(people_count):
-            if (i+1) in ai:
+            if (i+1001) in ai:
                 lobj = ax1.plot([],[], color="black", lw=2)[0]
             else:
                 lobj = ax1.plot([],[], color="red", lw=2)[0]
@@ -192,6 +195,10 @@ def animateTraj(loader, frame_start, frame_stop, boundaries, ai=None, path="traj
     
         #update data for plotting
         for (per, dat) in zip(person[i], data[i]):
+
+            if per > 1000:
+                per -= 1000
+
             vals[int(per-1)][0].append(dat[0])
             vals[int(per-1)][1].append(dat[1])
             
@@ -201,14 +208,14 @@ def animateTraj(loader, frame_start, frame_stop, boundaries, ai=None, path="traj
         return lines
 
     frames = int(np.floor((frame_stop - frame_start)/step))
-    ani = animation.FuncAnimation(fig = fig, func = animate, frames = frames, interval = int(step/fps), blit=True) 
+    ani = animation.FuncAnimation(fig = fig, func = animate, frames = frames, interval = int(step*1000/fps), blit=True) 
     plt.close(fig)
     
     if save:
         if useFFMPEG:
             writer = animation.FFMpegWriter(fps=fps/step, extra_args=['-vcodec', 'libx264'])
         else:
-            writer = animation.PillowWriter(fps=1000*fps/step, extra_args=['-vcodec', 'libx264'])
+            writer = animation.PillowWriter(fps=fps/step, extra_args=['-vcodec', 'libx264'])
         ani.save(path, writer=writer)
     return ani
 
