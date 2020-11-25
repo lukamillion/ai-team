@@ -11,7 +11,7 @@ following additional software is needed for this code to work:
 """
 
 #plot trajectories
-def plotTraj(loader, boundaries, people=None, ai=None, legend=False, title="Trajectories", path="trajectories.png", save=False):
+def plotTraj(loader, boundaries, people=None, ai=None, legend=False, wall=False, title="Trajectories", path="trajectories.png", save=False):
     """ plot Trajectories with the loader object.
 
         loader:     loader objekct that stores the data
@@ -54,6 +54,10 @@ def plotTraj(loader, boundaries, people=None, ai=None, legend=False, title="Traj
     ax1.set_xlabel('x Pos. / cm')
     ax1.set_ylabel('y Pox. / cm ')
     ax1.set_title(title, loc="left")
+
+    if wall:
+        ax1.vlines(-60, ymin=255, ymax=400, lw=3, color="fuchsia")
+        ax1.vlines(-60, ymin=-200, ymax=-95, lw=3, color="fuchsia")
     
     if legend:
         plt.legend()
@@ -64,7 +68,7 @@ def plotTraj(loader, boundaries, people=None, ai=None, legend=False, title="Traj
     plt.show()
     
 #Location Animation
-def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc_anim.gif", save=False, step=1, fps=16, interp=None, title="Location Animation", useFFMPEG=False):
+def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc_anim.gif", save=False, step=1, fps=16, wall=False, title="Location Animation", useFFMPEG=False):
     """ Animate the Trajectory as lines
 
         loader:     loader objekct that stores the data
@@ -92,6 +96,10 @@ def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc
     fig = plt.figure(figsize = (10,6))
     #creating a subplot 
     ax1 = fig.add_subplot(1,1,1)
+
+    if wall:
+        ax1.vlines(-60, ymin=255, ymax=400, lw=3, color="fuchsia")
+        ax1.vlines(-60, ymin=-200, ymax=-95, lw=3, color="fuchsia")
     
     scat = ax1.scatter([], [], c="red")
     scat_ai = ax1.scatter([], [], c="black")

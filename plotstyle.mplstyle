@@ -1,0 +1,15 @@
+axes.titlesize : 22
+axes.labelsize : 20
+axes.grid: False
+font.family : serif
+font.serif : Times New Roman
+font.size : 20
+lines.linewidth : 2
+lines.markersize : 6
+xtick.labelsize : 18
+ytick.labelsize : 18
+legend.fontsize : 15
+figure.titlesize : 22
+figure.figsize : 7, 5
+
+
