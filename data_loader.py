@@ -590,7 +590,7 @@ class DataLoader():
         """
 
         if id in self.data.p.to_list():
-            raise IndexError("Person ID already exists.")
+            raise IndexError("Person ID {} already exists.".format(id))
 
         l = traj.shape[0]
 

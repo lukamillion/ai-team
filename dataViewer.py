@@ -11,7 +11,7 @@ following additional software is needed for this code to work:
 """
 
 #plot trajectories
-def plotTraj(loader, boundaries, people=None, ai=None, legend=False, wall=False, title="Trajectories", path="trajectories.png", save=False):
+def plotTraj(loader, boundaries, people=None, ai=None, legend=False, wall=False, cor=False, title="Trajectories", path="trajectories.png", save=False):
     """ plot Trajectories with the loader object.
 
         loader:     loader objekct that stores the data
@@ -59,6 +59,15 @@ def plotTraj(loader, boundaries, people=None, ai=None, legend=False, wall=False,
         ax1.vlines(-60, ymin=255, ymax=400, lw=3, color="fuchsia")
         ax1.vlines(-60, ymin=-200, ymax=-95, lw=3, color="fuchsia")
     
+    if cor:
+        # measurement region
+        #ax1.vlines(-200, ymin=0, ymax=180, lw=2, color="orange")
+        #ax1.vlines(200, ymin=0, ymax=180, lw=2, color="orange")
+
+        # Walls
+        ax1.hlines(0, xmin=-300, xmax=300, lw=2, color="fuchsia")
+        ax1.hlines(180, xmin=-300, xmax=300, lw=2, color="fuchsia")
+
     if legend:
         plt.legend()
     
@@ -68,7 +77,7 @@ def plotTraj(loader, boundaries, people=None, ai=None, legend=False, wall=False,
     plt.show()
     
 #Location Animation
-def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc_anim.gif", save=False, step=1, fps=16, wall=False, title="Location Animation", useFFMPEG=False):
+def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc_anim.gif", save=False, step=1, fps=16, wall=False, cor=False, title="Location Animation", useFFMPEG=False):
     """ Animate the Trajectory as lines
 
         loader:     loader objekct that stores the data
@@ -100,6 +109,15 @@ def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc
     if wall:
         ax1.vlines(-60, ymin=255, ymax=400, lw=3, color="fuchsia")
         ax1.vlines(-60, ymin=-200, ymax=-95, lw=3, color="fuchsia")
+
+    if cor:
+        # measurement region
+        ax1.vlines(-200, ymin=0, ymax=180, lw=2, color="orange")
+        ax1.vlines(200, ymin=0, ymax=180, lw=2, color="orange")
+
+        # Walls
+        ax1.hlines(0, xmin=-300, xmax=300, lw=2, color="fuchsia")
+        ax1.hlines(180, xmin=-300, xmax=300, lw=2, color="fuchsia")
     
     scat = ax1.scatter([], [], c="red")
     scat_ai = ax1.scatter([], [], c="black")
@@ -108,7 +126,7 @@ def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc
 
     ax1.set_aspect('equal', adjustable='box')
     ax1.set_xlabel('x Pos. / cm')
-    ax1.set_ylabel('y Pox. / cm ')
+    ax1.set_ylabel('y Pos. / cm ')
     ax1.set_title(title, loc="left")
 
     #Using FuncAnimation we need to create an animation function which return and/or done a repetitive action
