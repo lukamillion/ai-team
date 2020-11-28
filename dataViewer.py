@@ -52,7 +52,7 @@ def plotTraj(loader, boundaries, people=None, ai=None, legend=False, wall=False,
 
     ax1.set_aspect('equal', adjustable='box')
     ax1.set_xlabel('x Pos. / cm')
-    ax1.set_ylabel('y Pox. / cm ')
+    ax1.set_ylabel('y Pos. / cm ')
     ax1.set_title(title, loc="left")
 
     if wall:
@@ -190,7 +190,7 @@ def animateTraj(loader, frame_start, frame_stop, boundaries, ai=None, path="traj
 
     ax1.set_aspect('equal', adjustable='box')
     ax1.set_xlabel('x Pos. / cm')
-    ax1.set_ylabel('y Pox. / cm ')
+    ax1.set_ylabel('y Pos. / cm ')
     ax1.set_title(title, loc="left")
 
     #initialize line objects for plotting
