@@ -37,7 +37,7 @@ The script will save the following files:
 '''
 
 #path of the working folder containing data.csv and giffify
-folder_path='/Users/alexanderjurgens/Desktop/MyIDE/Visualizations/rawtamed/'
+folder_path='/Users/alexanderjurgens/Desktop/MyIDE/Visualizations/rawdata/'
 
 #load the dataset data.csv using pandas
 data=pandas.read_csv(folder_path+'data.csv',skiprows=1,names=['row','person','frame','y','x','z','vx','vy'])
