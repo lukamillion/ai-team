@@ -1,9 +1,8 @@
-# Agent-Based Modeling and Social System Simulation 2019 (Template)
-(text between brackets to be removed)
+# Agent-Based Modeling and Social System Simulation 2020
 
 > * Group Name: A(I)-Team
 > * Group participants names: Michael Eichenberger, Isabel Heidtmann, Alexander Jürgens, Luka Milanovic, Dominique Zehnder 
-> * Project Title: (can be changed later)
+> * Project Title: AI in Pedestrian Dynamics
 
 ## General Introduction
 
