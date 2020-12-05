@@ -151,7 +151,7 @@ def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc
 
 
 # Trajectory animation
-def animateTraj(loader, frame_start, frame_stop, boundaries, ai=None, path="traj_anim.gif", save=False, step=1, fps=16, title="Trajectory Animation", useFFMPEG=False):
+def animateTraj(loader, frame_start, frame_stop, boundaries, wall=False, cor=False, ai=None, path="traj_anim.gif", save=False, step=1, fps=16, title="Trajectory Animation", useFFMPEG=False):
     """ Animate the Trajectory as lines
 
         loader:     loader objekct that stores the data
@@ -192,6 +192,19 @@ def animateTraj(loader, frame_start, frame_stop, boundaries, ai=None, path="traj
     ax1.set_xlabel('x Pos. / cm')
     ax1.set_ylabel('y Pos. / cm ')
     ax1.set_title(title, loc="left")
+
+    if wall:
+        ax1.vlines(-60, ymin=255, ymax=400, lw=3, color="fuchsia")
+        ax1.vlines(-60, ymin=-200, ymax=-95, lw=3, color="fuchsia")
+
+    if cor:
+        # measurement region
+        ax1.vlines(-200, ymin=0, ymax=180, lw=2, color="orange")
+        ax1.vlines(200, ymin=0, ymax=180, lw=2, color="orange")
+
+        # Walls
+        ax1.hlines(0, xmin=-300, xmax=300, lw=2, color="fuchsia")
+        ax1.hlines(180, xmin=-300, xmax=300, lw=2, color="fuchsia")
 
     #initialize line objects for plotting
     lines = []
