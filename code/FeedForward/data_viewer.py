@@ -274,3 +274,9 @@ def animatePreview(loader, boundaries, step):
            range_x=[boundaries[0], boundaries[1]], range_y=[boundaries[2], boundaries[3]],
            template="plotly_white", title="Animation Preview")
     fig.show()
+
+# running average filter 
+def smooth(y, box_pts):
+    box = np.ones(box_pts)/box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+    return y_smooth
