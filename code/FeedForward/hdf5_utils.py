@@ -7,9 +7,14 @@ import collections
 import numpy as np
 
 class HDF5Error(Exception):
-  pass
+  pass    # Drop a custom error 
 
 
+"""
+    
+    Basic manipulation and diagnostic of HDF5 files
+
+"""
 
 def fmt_fsize(num, suffix='B'):
     """
@@ -84,18 +89,31 @@ def print_stats(file_name):
        
     db.close()
     
+
+
 """
 
     Helpers To save and load training data
 
 """
 def save_trainingdata(f_name, param, train, val, test ):
+    """
+      Save a dataset that conists of input/ truth pairs and a train/val/test split
 
-
+      PARAM:
+        f_name: filename to store to
+        param:  dictionary with a entry 'dataset' which is a dictionary with all parameters that are relevant to the dataset
+        train:  train split of the dataset
+        val:    val split of the dataset
+        test:   test split of the dataset
+    """
+    # crate database overwrite if it exists
     database = h5py.File(f_name, 'w')
 
+    # write all the parametes of the dataset to the 
     write_attrs(database, param['dataset'] ) 
     
+    # write each split in a sub folder
     train_h = database.create_group('/train')
     train_h.create_dataset( name='input',shape=train[0].shape, 
                                          dtype=train[0].dtype,
@@ -123,14 +141,27 @@ def save_trainingdata(f_name, param, train, val, test ):
 
 
 def load_trainingdata(file_name):
+    """
+        Load a dataset that conists of input/ truth pairs and a train/val/test split
+
+        PARAM:
+          f_name: filename to store to
+
+        RETURN:
+          train:  train split of the dataset
+          val:    val split of the dataset
+          test:   test split of the dataset
+          param:  dictionary with a entry 'dataset' which is a dictionary with all parameters that are relevant to the dataset
+    """
     database = h5py.File(file_name, 'r')                  # open db
 
 
     param = load_attrs(database)                        # print attrs if debug
 
-    train = (database.get('train/input').value, database.get('train/truth').value )
-    val = (database.get('val/input').value, database.get('val/truth').value )
-    test = (database.get('test/input').value, database.get('test/truth').value )
+    # we convert to np arrays for more conveniant use
+    train = (np.array(database['train/input']), np.array(database['train/truth']))
+    val = (np.array(database['val/input']), np.array(database['val/truth']))
+    test = (np.array(database['test/input']), np.array(database['test/truth']))
 
     database.close()
     return train, val, test, param
@@ -140,15 +171,76 @@ def load_trainingdata(file_name):
 
     Helper to store pytorch model
 
+    we store the model ether in single mode or in scan mode.
+
+    single mode: 
+    
+    /
+    @ hyperparameters
+
+    /Dataset/
+      @ Dataset attributes
+    /Model/
+      @ hidden_s : array of size of hidden layers
+      @ input_s : # number of input nodes
+      @ output_s : # number of output nodes
+      @ layers: OrderedDict of the layers
+      Weights for each layer
+      ...
+    
+    scan mode:  we use a a group for each sub model eg
+
+    /
+    @ mode: mulit_model
+    @ models: list with models in stored in thes file
+
+    /MODEL_1/
+      @ hyperparameters
+
+      /MODEL_1/Dataset/
+        @ Dataset attributes
+      /MODEL_1/Model/
+        @ hidden_s : array of size of hidden layers
+        @ input_s : # number of input nodes
+        @ output_s : # number of output nodes
+        @ layers: OrderedDict of the layers
+        Weights for each layer
+        ...
+
+    /MODEL_2/
+      @ hyperparameters
+
+      /MODEL_2/Dataset/
+        @ Dataset attributes
+      /MODEL_2/Model/
+        @ hidden_s : array of size of hidden layers
+        @ input_s : # number of input nodes
+        @ output_s : # number of output nodes
+        @ layers: OrderedDict of the layers
+        Weights for each layer
+        ...
+    
+    ...
+
+
 """
 
 
 def load_torch(f_name, MODEL_class, prefix='model_1'):
-    
+    """
+        Load a torch model and initialize a instance of the sored model. load all settings along the model.
+        
+        PARAM:
+          f_name:       file to read from
+          MODEL_class:  Torch model class (nn.Module)
+          prefix:       if multiple networks are sotred in the file select a model
+        RETURN:
+
+    """
+    # open a database
     database = h5py.File(f_name, 'r')
 
-
-    
+    # load all parameters from the 
     params = load_attrs(database)
 
     if params['mode']=='multi_model':
@@ -171,28 +263,43 @@ def load_torch(f_name, MODEL_class, prefix='model_1'):
     
     print(mod_params)
 
+    # create model from stored parameters
     model = MODEL_class(mod_params['input_s'], mod_params['hidden_s'], mod_params['output_s'])
     
-    
+    # read the layers keeping the order
     stat = collections.OrderedDict() 
     for l in mod_params['layers']:
-        layer_param = load_attrs(mod[l])
-        stat[l] = torch.from_numpy(mod.get(l).value,).to(layer_param['device'])
+        layer_param = load_attrs(mod[l])      # get the device settings for each tensor
+        stat[l] = torch.from_numpy(mod.get(l).value,).to(layer_param['device'])   # initialize the model weight tensors
     
     database.close()
     
+    # load weights to the model
     model.load_state_dict(stat)
-    
     
     
     return model, params
 
 
 def save_torch(model, optimizer, f_name, param, scan=False, prefix='', creator="zehndiii"):
-    #TODO Apend mode
+    """
+        Save a torch model along with  all settings of the experiment.
+        
+        PARAM:
+          model:        used model of type (nn.Module)
+          optimizer:    instance of the used optimizer
+          f_name:       file to save to must not exist except we are in scan mode
+          param:        dict where all parametes of the experiment are stored
+          scan:         if true multiple model can be safed to the same file. 
+          prefix:       if multiple networks are sotred in the file select a model
+          creator:      keep track who performed experiment 
+        RETURN:
+
+    """
     
     # TODO support comments
     
+    # we do not want to overide any model we catch all atempts to do so
     if os.path.isfile(f_name):
       if scan:
         database = h5py.File(f_name, 'a')
@@ -204,6 +311,7 @@ def save_torch(model, optimizer, f_name, param, scan=False, prefix='', creator="
     
 
     if scan:
+      # check for valid parameters
       if prefix=="":
         database.close()
         raise HDF5Error("Cannot write model with no name specified" )
@@ -223,6 +331,7 @@ def save_torch(model, optimizer, f_name, param, scan=False, prefix='', creator="
         database.close()
         raise HDF5Error("Cannot replace model that already exists: {}".format(prefix))
 
+      # we append the model to the model list
      
       par['models'] = [n.encode("ascii", "ignore") for n in np.append(par['models'] ,  prefix)]
 
@@ -231,9 +340,9 @@ def save_torch(model, optimizer, f_name, param, scan=False, prefix='', creator="
       db = database.create_group(prefix)
 
 
-      # set mode
-      # write model list
+      
     else:
+      # we do not need to store additional parameters for a singel model
       print("simpe")
       db = database
       
@@ -258,17 +367,6 @@ def save_torch(model, optimizer, f_name, param, scan=False, prefix='', creator="
     dataset = db.create_group('dataset')
     
     write_attrs(dataset, param['dataset'])
-    """
-    {'creator':creator,       # write general attributes
-                      'date':date,
-                      'neighbors':number_nei,
-                      'augmentation':str(augmentation),
-                      'shuffle':shuffle,
-                      'truth_with_vel':truth_with_vel,
-                      'mode':mode,
-                      'fps':FPS
-                     }
-    """
     
     # write model and settings
     mod = db.create_group('model')
@@ -277,6 +375,8 @@ def save_torch(model, optimizer, f_name, param, scan=False, prefix='', creator="
     
     layers = []
     
+    # loop over layers, get the weights as numpy array and store them to a new dataset
+    # write the tensor attributes to the datset
     for k, v in stat.items():
         
         layers += [k]
@@ -290,6 +390,7 @@ def save_torch(model, optimizer, f_name, param, scan=False, prefix='', creator="
                             'dtype':str(v.dtype),
                          })
     
+    # store the order of the layers
     write_attrs(mod, {'input_s':param['input_s'],
                          'hidden_s':param['hidden_s'],
                          'output_s':param['output_s'],

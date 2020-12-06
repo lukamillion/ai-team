@@ -16,9 +16,6 @@ from progressbar import FormatLabel, Percentage, Bar, ETA
 
     https://ped.fz-juelich.de/da/doku.php?id=start#unidirectional_flow_closed_boundary_condition
 
-    
-    UG Dataset:
-    Frame rate: 16 FPS
     Data is stored in the following format:
     Person id | frame | x pos | y pos | z pos 
 
@@ -57,11 +54,11 @@ class DataLoader():
         self.data = pd.DataFrame(columns=['p', 'f', 'x', 'y', 'z', 'vx', 'vy'])
         
     @property
-    def frames(self):
+    def frames(self):       # return the frames present in the dataset
         return len(self.data.f.unique())
 
     @property
-    def persons(self):
+    def persons(self):      # return the number of person present in the dataset
         return len(self.data.p.unique())
         
     def get_vel_(self, pos, fps=-1, ):
@@ -76,8 +73,8 @@ class DataLoader():
         """
         T = 1/ (fps if fps>0 else self.fps)
 
-        vx = np.diff( pos[:,0], append=pos[-1,0] ) / T
-        vy = np.diff( pos[:,1], append=pos[-1,1] ) / T
+        vx = np.diff( pos[:,0], append=pos[-1,0] ) / T  # append the last position to keep shape
+        vy = np.diff( pos[:,1], append=pos[-1,1] ) / T  # append the last position to keep shape
         
         return vx, vy
         
@@ -96,7 +93,7 @@ class DataLoader():
                 frame: return frame count
                 pos_vel: returns [x, y, (vx, vy)] as 2d array with time in axis 0 
         """
-        self.temp = self.data[self.data['p'] == id].sort_values('f')
+        self.temp = self.data[self.data['p'] == id].sort_values('f') 
         
         if ret_vel:
             ret_col = ['x', 'y', 'vx', 'vy' ]
@@ -112,7 +109,7 @@ class DataLoader():
     
     def frame(self, id, ret_vel=True, with_id=False):
         """
-            Returns all persons in a given fram
+            Returns all persons in a given frame
 
             Param:
                 id: id of frame
@@ -159,8 +156,9 @@ class DataLoader():
                 p_ids: id of Nearest neighbors order from near to factor length nn
                 p_pos_Vel: Nearest neighbors pos and velocities  [[x, y,(vx,vy)],  ] shape(nn, 2(4))
         """
-        ref = pos[idx, :2]
+        ref = pos[idx, :2]    # get position of person
         
+        # compute the pythagorean distance to the person an sort in ascending order 
         dist = ((pos[:,:2]-ref)**2).sum(axis=1)
         sort = np.argsort(dist)
                
@@ -176,18 +174,22 @@ class DataLoader():
             
             filled = True
 
+            # use existing neighbors to fill up till we get nn neighbors if we have at least one neighbor
             if mode=="wrap" and pos.shape[0]>include_origin:
+                # crop away person position
                 neig_id = pids[int(include_origin):]
                 neig = pos[int(include_origin):]
 
+                # repeat available neighbors m times 
                 m= int(np.ceil(nn/neig.shape[0] ))
                 neig_id  = np.tile(neig_id, m)
                 neig = np.tile(neig.T, m).T
 
-                if include_origin:
+                if include_origin: # insert person at the begining if desired
                     pids = np.insert(neig_id, 0, pids[0], axis=0)
                     pos = np.vstack((pos[0], neig))
                 
+                # crop to a length of nn(+1)
                 pids = pids[:nn+include_origin]
                 pos = pos[:nn+include_origin]
 
@@ -195,7 +197,7 @@ class DataLoader():
                 if mode=="zero" or mode=="wrap":        # if no neighbor is there we use zero instead
                     k = 0 
                 
-                else:
+                else:                                   # we fill with the given value of mode
                     k = mode
                 
                 z = np.ones((nn+include_origin, pos.shape[1]))*k
@@ -235,6 +237,8 @@ class DataLoader():
         """
         idx, p_ids, pos_vel = self.frame(f_id, with_id=True)
         
+
+        # check that person is in frame an roi
         if not p_id in p_ids:
             raise IndexError("Person {} not present in Frame {}".format(p_id, f_id))    
         
@@ -246,6 +250,7 @@ class DataLoader():
                 raise IndexError("Person {} not present in selected ROI (frame {})".format(p_id,   f_id )) 
 
         filled = False
+        # compute nearest neighbors
         if fill:
             p_ids, pos_vel_nn, filled = self.get_nn(p_ids, pos_vel, np.where(p_ids==p_id)[0], nn, fill=fill, mode=mode,  include_origin=include_origin)
         else:
@@ -262,9 +267,6 @@ class DataLoader():
 
 
     def grab_roi(self, id_s, pos_vel, box=((-300, 100), (300,0)), x_pad=50, y_pad=0, ret_mask=False ):
-        # pre, post length
-        # square
-        # 
         """
             
             Only returns the positions witch both coordinates in the 
@@ -285,11 +287,13 @@ class DataLoader():
         x_low, x_high = box[0][0]-x_pad, box[1][0]+x_pad
         y_low, y_high = box[1][1]+y_pad, box[0][1]-y_pad
 
+        # check each dimention seperatly
         m1 = np.ma.masked_where( pos_vel[:,0]<x_high, pos_vel[:,0]).mask
         m2 = np.ma.masked_where( pos_vel[:,0]>x_low, pos_vel[:,0]).mask
         m3 = np.ma.masked_where( pos_vel[:,1]<y_high, pos_vel[:,1]).mask
         m4 = np.ma.masked_where( pos_vel[:,1]>y_low, pos_vel[:,1]).mask
         
+        # combine maskt with and logic
         mask = m1*m2*m3*m4
 
         if not ret_mask:
@@ -320,18 +324,18 @@ class DataLoader():
 
         """
 
-        # return list of singele paths with nn neighbors
-        # and corresponding ids
         train_id = []
         trajectories = []
+
+        # start progressbar but first force jupyter to write previous output
         print('', end='', flush=True)
         pbar = progressbar.ProgressBar(maxval=self.persons)
         pbar.start()
 
         for id_p in range(1, 1+self.persons):
-            frames, pos_vel = self.person(id_p)      
+            frames, pos_vel = self.person(id_p)      # grab person data
 
-            if use_roi:  
+            if use_roi:                              # crop to roi region if desired
                 roi_f, roi_p = self.grab_roi(frames, pos_vel, box, x_pad, y_pad, )
             else:
                 roi_f, roi_p = frames, pos_vel
@@ -340,21 +344,21 @@ class DataLoader():
 
             traj = []
 
-            for f in roi_f:
+            for f in roi_f:                          # loop over each frame and get neares neighbours
                 _, _, pos_neig, np_f = self.frame_nn(f, id_p, nn, ret_vel=ret_vel, fill=fill, mode=mode, use_roi=use_roi, box=box, x_pad=x_pad, y_pad=y_pad, ret_full=True)
                 filled += np_f
                 
-                if ((not nn_vel) & ret_vel):
+                if ((not nn_vel) & ret_vel):        # crop velocity away
                     pos_neig = np.concatenate((pos_neig[0,:], pos_neig[1:,0:2].ravel()))
 
-                traj.append( pos_neig.ravel())
+                traj.append( pos_neig.ravel())      # append point to trajectory buffer
 
-            if len(traj)==0:
+            if len(traj)==0:                        # we do not want to use empty trajectories(person was never in roi)
                 continue
 
             traj = np.array(traj)
 
-            if filled==0 or not omit_no_neighbors:
+            if filled==0 or not omit_no_neighbors:  # we have the option to use only trajectories wher we never filled up neighbours
                 train_id.append(id_p)
                 trajectories.append(traj.astype(np.float32))
                
@@ -371,7 +375,7 @@ class DataLoader():
 
             Param: 
                 traj: Data to process
-                x_center: center oft the mirror axis 
+                x_center: center of the mirror axis 
                 use_vel: if true the data is encoding velocity for origin
                 nn_vel: if true the neighbors use velocity
 
@@ -427,7 +431,6 @@ class DataLoader():
                 truth_steps: the truth date for each step
 
 
-
         """
 
         inputs = []
@@ -467,44 +470,41 @@ class DataLoader():
                 (test_in, test_truth): testing data with corresponding truth values
 
         """
+        # get all trajecotries through the dataset
         idexs, trajs = self.get_trajectories(nn=nn, **kwargs)
         print("loaded {} trajectories".format(len(idexs)))
 
-
+        # apply augmentation to the date
         for aug in augmentation:
             trajs = aug(trajs)
 
         print("with augmentation {} trajectories".format(len(trajs)))
 
-
-        print(len(trajs), trajs[-1].shape)
-        #print(trajs.shape)
+        # downsample each trajectory but use every skipped point as new
+        # start point so we do not loose training data. 
         if downsample > 1:
             arr = []
             for tr in trajs:
-                #print(tr.shape)
                 for i in range(downsample):
-                    arr.append(tr[i::downsample])
-                #print(len(arr), arr[-2].shape, arr[-1].shape)
-            
+                    arr.append(tr[i::downsample])   
 
 
-            trajs = arr #np.hstack(arr)
+            trajs = arr 
 
         print("with downsample {} trajectories".format(len(trajs)))
 
+        # transform all trajectories to pairs of input and truth pairs
         steps_input, steps_truth = self.trajectory_2_steps(trajs, step_nr, truth_with_vel)
 
         if shuffle:
             p = np.random.permutation(len(steps_truth))
-            #np.random.shuffle(steps_input)
             steps_input = steps_input[p]
             steps_truth = steps_truth[p]
 
         print("extracted {} steps".format(len(steps_input)))
 
         
-
+        # do the train , validation , test split 
         length = len(steps_input)
         train, test = int(split[0]/100.0*length), int(split[2]/100.0*length)
 
@@ -608,13 +608,16 @@ class DataLoader():
         """
         temp = self.data[(self.data['p']==id)]
 
+        # get region to interpolate
         frames = temp['f'].to_numpy()
         fmin, fmax = int(frames.min()), int(frames.max())
 
+        # fill in nan entries where we want to interpolate in the later step
         for f in range(fmin, fmax):
             if not f in frames.astype(int):
                 self.data = self.data.append(pd.DataFrame([np.array([id, f, np.nan,  np.nan,  0,  np.nan,  np.nan])], columns=list(self.data)), ignore_index=True)
             
+        # order the dataset and then interpolate all values with nan
         self.data = self.data.sort_values(["p", "f"], ascending = (True, True))
         self.data = self.data.interpolate()
 
@@ -633,6 +636,7 @@ class DataLoader():
         self.FlipX = data.FlipX
         self.FlipY = data.FlipY
 
+        # make a deepcopy of the data list
         self.data = copy.copy(data.data)
 
     def load(self,):
@@ -640,10 +644,10 @@ class DataLoader():
             load data from the given path
 
         """
-        if self.path[-3:] == "txt":
+        if self.path[-3:] == "txt":         # the raw data does not have have velocity information so we need to calculate it. 
             with open(self.path) as f:
                 file_length = len(f.readlines(  ))
-                df = pd.read_fwf(self.path, infer_nrows=file_length, header=None)#, colspecs=colspecs, index_col=0)
+                df = pd.read_fwf(self.path, infer_nrows=file_length, header=None)
                 df.columns = ['p', 'f', 'y', 'x', 'z', ] # Chang x and y because date is stored transposed
             
             l = len(df)
@@ -692,4 +696,23 @@ class DataLoader():
             self.data.to_csv(path+".csv" )
 
 
+"""
+    
+    Helper functions: 
+
+"""
+def batch(arr1, arr2, n):
+    """
+        Yield successive n-sized chunks from given arrays.
+    PARAM:
+        arr1: first array to batch
+        arr2: second array to bach
+        n:    size of one bach
+    RETURN:
+        Generator object (arr1, arr2) length of array is <=n 
+
+    """
+    size = len(arr1)
+    for i in range(0, size, n):
+        yield arr1[i:min(i + n, size)], arr2[i:min(i + n, size)]
 
