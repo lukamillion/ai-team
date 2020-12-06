@@ -270,8 +270,10 @@ def load_torch(f_name, MODEL_class, prefix='model_1'):
     stat = collections.OrderedDict() 
     for l in mod_params['layers']:
         layer_param = load_attrs(mod[l])      # get the device settings for each tensor
-        stat[l] = torch.from_numpy(mod.get(l).value,).to(layer_param['device'])   # initialize the model weight tensors
-    
+        #stat[l] = torch.from_numpy(mod.get(l).value,).to(layer_param['device'])   # initialize the model weight tensors
+        stat[l] = torch.from_numpy(np.array(mod[l]),).to(layer_param['device'])   # initialize the model weight tensors
+        
+
     database.close()
     
     # load weights to the model
@@ -296,8 +298,6 @@ def save_torch(model, optimizer, f_name, param, scan=False, prefix='', creator="
         RETURN:
 
     """
-    
-    # TODO support comments
     
     # we do not want to overide any model we catch all atempts to do so
     if os.path.isfile(f_name):
