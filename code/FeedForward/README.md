@@ -31,7 +31,7 @@ Here you find all codes for the Feed Forward approach. The *.py files provide th
 ### simulation.py
 * Agent class with using trained model
 * Engine class to run simulations 
-
+* Helper to measure meanspead and density
 
 
 
