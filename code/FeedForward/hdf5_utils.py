@@ -244,7 +244,9 @@ def load_torch(f_name, MODEL_class, prefix='model_1'):
     params = load_attrs(database)
 
     if params['mode']=='multi_model':
-      print("multi_model")
+      if prefix.encode("ascii", "ignore") not in params['models']:
+        database.close()
+        raise HDF5Error("Cannot load model which is not in database: {}".format(prefix) )
       db = database[prefix]
       params = load_attrs(db)
     else:
@@ -256,12 +258,11 @@ def load_torch(f_name, MODEL_class, prefix='model_1'):
     mod_params = load_attrs(mod)
     
     params['dataset'] = db_params
-    params['input_s'] = mod_params['input_s'],
-    params['hidden_s'] = mod_params['hidden_s'],
-    params['output_s'] = mod_params['output_s'],
+    params['input_s'] = mod_params['input_s']
+    params['hidden_s'] = mod_params['hidden_s']
+    params['output_s'] = mod_params['output_s']
     params['device'] = torch.device(params['device'])
     
-    print(mod_params)
 
     # create model from stored parameters
     model = MODEL_class(mod_params['input_s'], mod_params['hidden_s'], mod_params['output_s'])
@@ -320,8 +321,8 @@ def save_torch(model, optimizer, f_name, param, scan=False, prefix='', creator="
 
       if par == {}:
         par['mode'] = "multi_model"
-        par['models'] = np.array(["dummy"], dtype=object)
-
+        #par['models'] = np.array(["dummy"], dtype=object)
+        par['models'] = np.array([], dtype=object)
 
       elif par['mode']!="multi_model":
         database.close()
@@ -343,7 +344,6 @@ def save_torch(model, optimizer, f_name, param, scan=False, prefix='', creator="
       
     else:
       # we do not need to store additional parameters for a singel model
-      print("simpe")
       db = database
       
 

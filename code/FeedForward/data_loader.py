@@ -601,6 +601,32 @@ class DataLoader():
         data = np.hstack((np.ones((l,1))*id, frame.reshape((l,1)), traj, np.zeros((l,1)), vel) )
         self.data = self.data.append( pd.DataFrame( data, columns=['p', 'f', 'x', 'y', 'z', 'vx', 'vy']),  ignore_index=True )
 
+    def insert_row(self,  p_id, frame, pos_vel, downsample=1):
+        """
+            Insert or overwrite a row (specific person id and frame)
+
+            PARAMS:
+                p_id: id of person to edit
+                frame: id of frame to edit
+                pos_vel: data to insert 
+                downsample: set this parameter to get warnings
+            RETURN:
+                -
+        """
+        # we need to switch the x and y coordinates because we do a lowlevel acess to the transposed coordinates
+        pos_vel [[0, 1]] = pos_vel [[1, 0]]
+
+        # build row to incert/ overwrite
+        entry = np.concatenate( ([p_id], [frame], pos_vel[:2], [0], pos_vel[2:] ) )
+        
+        # check if we insert or override
+        if len(self.data[(self.data["p"]==p_id) & (self.data["f"]==frame)]):
+            if downsample>1: print("WARNIG: you may have additional stepps in dset, -> please remove old agent befor simulating.")
+            self.data[(self.data["p"]==p_id) & (self.data["f"]==frame)] = [entry]
+        else:
+            self.data = self.data.append(pd.DataFrame([entry],
+                                                            columns=list(self.data)),
+                                                           ignore_index=True)  
 
     def interpolate_person(self, id):
         """

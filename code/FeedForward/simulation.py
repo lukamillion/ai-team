@@ -9,28 +9,48 @@ from data_loader import DataLoader
 
 
 
-# TODO accept sim parameter dicts
+
 
 class Agent():
     """
         An agent that has a netwerk stored. It walks based on the given neighbors one Time step.
     """
-    def __init__(self, model, pos_vel_0, id=100, frame_0=0, FPS=16, truth_with_vel=False, device="cpu"):
-        
+    def __init__(self, model, pos_vel_0, id=1000, frame_0=0, param=None, FPS=16, truth_with_vel=False, device="cpu"):
+        """
+            creats an Agent with an pre trained model. 
+
+            PARAM:
+                model:  pretrained torch model
+                pos_vel_0: start position and velocity
+                id:     agent id
+                frame_0: start frame
+                param:  if param is set all following parameters are ignored 
+                FPS:    frame rate of dataset
+                truth_with_vel: if true the velocity is predicted
+                device: device to run sim on
+
+            RETURN:
+                -
+
+        """
         
         self.id = id
         
         self.model = model
-        self.device = device
-        self.truth_with_vel = truth_with_vel
+        if param is None:
+            self.device = device
+            self.truth_with_vel = truth_with_vel
+            self.FPS = FPS
+        else:
+            self.device = param['device']
+            self.truth_with_vel = param['dataset']['truth_with_vel']
+            self.FPS = param['dataset']['fps']
         
         if self.device.type.startswith("cuda"):
             self.model.cuda()
         
         self.pos_vel_0 = pos_vel_0.copy()
         self.frame_c = frame_0
-        
-        self.FPS = FPS
         
         # position and velocity data
         self.frames = [frame_0]
@@ -82,20 +102,35 @@ class Agent():
 
 
 class Engine():
-    def __init__(self, ds, agents=[], nn=10, stop_agent=False, xlim=350, mode="wraps", ret_vel=True, nn_vel=True,
-                 truth_with_vel=True, downsample=1, exportpath="sim.csv"):
-        
-        self.ds = DataLoader(exportpath)
+    def __init__(self, ds, agents=[], stop_agent=False, xlim=350, truth=None, param=None, ):
+        """
+            start a simulation for multiple agents
+
+            PARAM:
+                ds:         dataset with persons
+                agents:     list of agents
+                stop_agent: if True we stop the agents at xlim
+                xlim:       limit for simulation in x direction
+                truth:      original data may be used for further analysis
+                param:      parameter dict of current experiment
+
+            RETURN:
+                -
+        """        
+        self.ds = DataLoader(None)
         self.ds.copy(ds)  # we copy the data so that we do not manipulate the original data
+
+        self.t_ds = truth
         
         self.agents = agents
         
-        self.nn = nn
-        self.ret_vel = ret_vel
-        self.nn_vel = nn_vel
-        self.truth_with_vel = truth_with_vel
-        self.mode = mode
-        self.downsample = downsample
+        self.nn = param['dataset']['neighbors']
+        self.ret_vel = param['dataset']['ret_vel']
+        self.nn_vel = param['dataset']['nn_vel']
+        self.truth_with_vel = param['dataset']['truth_with_vel']
+        self.mode = param['dataset']['mode']
+        self.downsample = param['dataset']['downsample']
+
         self.stop_agent = stop_agent
         self.xlim = xlim
         self.cur_f = 0
@@ -134,25 +169,13 @@ class Engine():
             else:
                 pos_vel = pos_vel.ravel()
 
-#TODO implement frame override in dataloader
             # predict the next step
             n_pos_vel = a.step(pos_vel).copy()
-            # we need to switch the x and y coordinates because we do a lowlevel acess
-            n_pos_vel [[0, 1]] = n_pos_vel [[1, 0]]
+            
+            # insert step into dataobject
+            self.ds.insert_row( a.id, self.cur_f+self.downsample, n_pos_vel, self.downsample)
 
-            # build row to incert/ overwrite
-            entry = np.concatenate( ([a.id], [self.cur_f+self.downsample], n_pos_vel[:2], [0], n_pos_vel[2:] ) )
-            
-            # check if we insert or override
-            if len(self.ds.data[(self.ds.data["p"]==a.id) & (self.ds.data["f"]==self.cur_f+self.downsample)]):
-                if self.downsample>1: print("WARNIG: you may have additional stepps in dset, -> please remove old agent befor simulating.")
-                self.ds.data[(self.ds.data["p"]==a.id) & (self.ds.data["f"]==self.cur_f+self.downsample)] = [entry]
-            else:
-                self.ds.data = self.ds.data.append(pd.DataFrame([entry],
-                                                                columns=list(self.ds.data)),
-                                                               ignore_index=True)    
-                
-            
+
         # set the frame counter up
         self.cur_f += 1
         
@@ -175,23 +198,14 @@ class Engine():
         # init progressbar but flush first the stdout
         print('', end='', flush=True)
         widgets = [FormatLabel(''), ' ', Percentage(), ' ', Bar(), ' ', ETA()]
-        pbar = progressbar.ProgressBar(widgets=widgets, maxval=stop_f)
+        pbar = progressbar.ProgressBar(widgets=widgets, maxval=stop_f+len(self.agents))
         pbar.start()
         
         # place all agent in the dataset
         for  a in self.agents:
+            # insert step into dataobject
+            self.ds.insert_row( a.id, a.frame_c, a.pos_vel_0, self.downsample)
 
-            pos = a.pos_vel_0[:2]
-            entry = np.concatenate( ([a.id],  [a.frame_c], np.flip(pos) , [0],  a.pos_vel_0[2:]) )
-            
-            # we need to check if we have to override data or insert a new row
-            if len(self.ds.data[(self.ds.data["p"]==a.id) & (self.ds.data["f"]==a.frame_c)]):
-                self.ds.data[(self.ds.data["p"]==a.id) & (self.ds.data["f"]==a.frame_c)] = [entry]
-            else:
-                self.ds.data = self.ds.data.append(pd.DataFrame([entry],
-                                                                columns=list(self.ds.data)),
-                                                               ignore_index=True)
-        
         
         while self.cur_f < stop_f:
             #do one step, eg move all agents
@@ -200,9 +214,135 @@ class Engine():
             widgets[0] = FormatLabel('frame: {:4}'.format(self.cur_f))
             pbar.update(self.cur_f)
         
+        # interpolate the 
+        for j, a in enumerate(self.agents):
+            widgets[0] = FormatLabel('interpolate: {:4}'.format(a.id))
+            pbar.update(stop_f+j)
+            self.ds.interpolate_person(a.id)
+
+        widgets[0] = FormatLabel('Done!')
         pbar.finish()
 
 
     
-    def save(self, ):
-        pass
+    def save(self, name="sim.csv", include_truth=True):
+        """
+            Save the simulation in the dataloader compatilbe format.
+            Make shure no agent id overlaps with the person id
+
+            PARAM:
+                name: name of export
+                include_truth: if true the og dataset is included in the export
+            RETURN: 
+                -
+        """
+        
+        # create a temporary dataloader object because other wise the simulation data
+        # will have the truth values as well.
+        ds_s = DataLoader(None)
+        ds_s.copy(self.ds)
+
+        # insert the original data to the save file
+        if include_truth and self.t_ds is not None:
+            to_copy = np.setdiff1d(self.t_ds.data['p'].unique(), ds_s.data['p'].unique())
+            
+            if len(to_copy)<len(self.t_ds.data['p'].unique()):
+                print( "Warning! Only new IDs are considered.")# give a warning if not all data is copied
+            
+            for p in to_copy:   # loop over all people to copy
+                frames_b, pos_vel_b =  self.t_ds.person( p, )
+                ds_s.append_person(p, frames_b, pos_vel_b[:,:2], vel=pos_vel_b[:,2:] )
+
+        # save the dataset
+        ds_s.save(name)
+
+        return ds_s
+        
+
+
+
+
+"""
+
+    Perform measurements on data objects
+
+"""
+
+def get_mean_speed(data, id, roi=((-200, 180),(200, 0)), mode="both", normalize=False, pos=(0, 0)):
+    """
+        Measures the means spead of a person/ agent in the roi. 
+
+        PARAM:
+            data:   data loader object
+            frame:  frame id to measure on
+            roi:    Measurement region
+            mode:   'x'/'y'/'both' select witch velocity to average, both uses the pythagorean velocity
+            normalize: normalize with a distane to a referance point.
+            pos:    reference position to normalize
+
+        RETURN:
+            density:    density in # per are in units of the roi parameters
+    """
+    frames, pos_vel = data.person(id)
+    frames, pos_vel = data.grab_roi(frames, pos_vel, box=roi, x_pad=0 )
+    
+    if len(frames)==0:
+        return np.nan
+    
+    if not normalize:
+        if mode =='x':
+             vel_m = pos_vel[:,2].mean()
+        elif mode == 'y':
+             vel_m = pos_vel[:,3].mean()
+        elif mode == 'both':
+             vel_m = np.sqrt((pos_vel[:,2:]**2).sum(axis=1)).mean()
+    else:
+        if mode =='x':
+            vel = pos_vel[:,2]
+            
+            r = pos_vel[0] - pos[0]
+            vel /= r
+            
+            vel_m = vel.mean()
+        elif mode == 'y':
+            vel = pos_vel[:,3]
+            
+            r = pos_vel[1] - pos[1]
+            vel /= r
+            
+            vel_m = vel.mean()
+        elif mode == 'both':
+            vel = np.sqrt((pos_vel[:,2:]**2).sum(axis=1))
+            
+            r = np.sqrt(( (pos_vel[:,:2]-pos)**2).sum(axis=1))
+            vel /= r
+            
+            vel_m = vel.mean()
+
+    #print("ID ", id ," vel :",  vel_m)
+    return vel_m
+
+
+def get_density(data, frame, roi=((-200, 180),(200, 0)) ):
+    """
+        Measures the density of People in teh given roi.
+
+        PARAM:
+            data:   data loader object
+            frame:  frame id to measure on
+            roi:    Measurement region
+
+        RETURN:
+            density:    density in # per are in units of the roi parameters
+    """
+    id_s, pos_vel = data.frame(frame)
+    
+    id, _ = data.grab_roi( id_s, pos_vel, box=roi, x_pad=0, y_pad=0, ret_mask=False )
+    
+    area = (roi[1][0]-roi[0][0]) * (roi[0][1]-roi[0][0])
+    
+    density = len(id)/ area
+    
+    return density
+
+
