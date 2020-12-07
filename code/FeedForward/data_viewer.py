@@ -1,38 +1,67 @@
+"""
+This module contains plotting functionality for the "AI in pedestrian dynamics" project. The code can be used to visualize pedestrian 
+trajectories in various ways.
+
+This code uses the DataLoader object from dataloader.py for input data.
+
+The following functionality is included:
+
+    - plotTraj:         plot the pedestrian trajectories as lines 
+
+    - animateLoc:       Animate the trajectories of pedestrians as a .mp4 or .gif. Here, the position of a pedestrian
+                        is indicated by a red/black dot
+
+    - animateTraj:      Animate the trajectories of pedestrians as a .mp4 or .gif. Here, the trajectory of a pedestrian
+                        is animated as a continuously appending line plot.
+
+    - animatePreview:   fast and easy preview of DataLoader data to examine simulated data quickly.
+
+    - smooth:           simple running average filter that can be used for various plots. In our case, it is mainly used
+                        for training loss plots.
+
+following additional software is needed for the function animatePreview to work:
+
+    - plotly (can be installed via "pip install plotly" in CMD or "conda install plotly" if Anaconda is used)
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.animation as animation
 from matplotlib import rc
 rc('animation', html='html5')
 
-"""
-following additional software is needed for this code to work:
 
-    - for animatePreview: plotly
-"""
 
 #plot trajectories
 def plotTraj(loader, boundaries, people=None, ai=None, legend=False, wall=False, cor=False, title="Trajectories", path="trajectories.png", save=False):
-    """ plot Trajectories with the loader object.
+    """ plot Trajectories with the DataLoader object. People (from dataset) are plotted with red lines, ai_agents are plotted in black.
 
-        loader:     loader objekct that stores the data
-        boundaries: figure boundaries [xmin, xmax, ymin, ymax]
-        people:     trajectories (people) to plot. If None, prints all
-        unicolor:   if True, print all trajecotires from people in Red
-        ai:         people number that are ai_agents (for color grading)
-        legend:     show figure legend
-        title:      figure Title
-        path:       filepath + filenahme for saving
-        save:       if True, save plot
+        PARAM
+
+            loader:         loader object that stores the data
+            boundaries:     figure boundaries [xmin, xmax, ymin, ymax]
+            people:         List of indexes of the trajectories (people) to plot. If None, prints all
+            ai:             List of indexes of that are ai_agents (for color differentiating). If None, no ai_agents are plotted
+            legend:         True/False. If True, show figure legend
+            wall:           True/False. If True, plots the wall geometry for the ao-360-*** bottleneck
+            cor.            True/False, If True, plots the wall geometry for the ug-180-*** corridor
+            title:          String. Figure title
+            path:           filepath + filename for saving (relative path)
+            save:           True/False. If True, save plot
+        
+        RETURN
+            -
 
         """
     fig = plt.figure(figsize = (10,6))
-    #creating a subplot 
+    # creating a subplot 
     ax1 = fig.add_subplot(1,1,1)
     
+    # read people from dataloader if not specified
     if people is None:
         people = loader.data['p'].unique()
 
-
+    # plot line for every person/agent
     if ai is None:
         for person in people:
             _, traj = loader.person(person)
@@ -47,6 +76,7 @@ def plotTraj(loader, boundaries, people=None, ai=None, legend=False, wall=False,
             _, traj = loader.person(agent)
             ax1.plot(traj[:, 0], traj[:, 1], lw=2, color="black", label="{}".format(agent))
         
+    # figure specifications
     ax1.set_xlim([boundaries[0], boundaries[1]])
     ax1.set_ylim([boundaries[2], boundaries[3]])
 
@@ -55,6 +85,7 @@ def plotTraj(loader, boundaries, people=None, ai=None, legend=False, wall=False,
     ax1.set_ylabel('y Pos. / cm ')
     ax1.set_title(title, loc="left")
 
+    # plot geometry features (wall/corridor)
     if wall:
         ax1.vlines(-60, ymin=255, ymax=400, lw=3, color="fuchsia")
         ax1.vlines(-60, ymin=-200, ymax=-95, lw=3, color="fuchsia")
@@ -75,26 +106,40 @@ def plotTraj(loader, boundaries, people=None, ai=None, legend=False, wall=False,
         plt.savefig(path, bbox_inches="tight")
         
     plt.show()
+
     
+
 #Location Animation
 def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc_anim.gif", save=False, step=1, fps=16, wall=False, cor=False, title="Location Animation", useFFMPEG=False):
-    """ Animate the Trajectory as lines
+    """ Animate Position with the DataLoader object as dots. People (from dataset) are plotted with red dots, 
+        ai_agents are plotted in black.
 
-        loader:     loader objekct that stores the data
-        frame_start:frame where the animation starts
-        frame_stop: frame where the animation stops
-        boundaries: figure boundaries [xmin, xmax, ymin, ymax]
-        ai:         person list to select the ai agents for color grading
-        path:       filepath + filenahme for saving
-        save:       if True, save plot
-        step:       frame steps for animation (f.e. step=5 uses every 5th frame)
-        fps:        frames per second for the animation (with step=1)
-        title:      Title of the Animation
-    """
+        PARAM
+
+            loader:         loader object that stores the data
+            frame_start:    Integer. Start frame number for the animation
+            frame_stop:     Integer. Stop frame number for the animation
+            boundaries:     figure boundaries [xmin, xmax, ymin, ymax]
+            ai:             List of indexes of that are ai_agents (for color differentiating). If None, no ai_agents are plotted
+            path:           filepath + filename for saving (relative path)
+            save:           True/False. If True, save plot
+            step:           frame steps for animation (f.e. step=5 uses every 5th frame)
+            fps:            frames per second for the animation. Default is 16 (= actual data fps)
+            wall:           True/False. If True, plots the wall geometry for the ao-360-*** bottleneck
+            cor.            True/False, If True, plots the wall geometry for the ug-180-*** corridor
+            title:          String. Figure title
+            useFFMPEG:      True/False. If True, use FFMPEG writer to create videos (must be installed!). 
+                            Uses PillowWriter as default.
+        
+        RETURN
+            -
+
+        """
     #preprocess data
     data = []
     ai_data = []
 
+    # load data into new data structure for animation
     for i in np.arange(frame_start, frame_stop, step):
         people, temp = loader.frame(i, ret_vel=False, with_id=False)
         data.append(temp)
@@ -102,10 +147,11 @@ def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc
 
         
     #Set the figure for the animation framework
-    fig = plt.figure(figsize = (10,6))
-    #creating a subplot 
+    fig = plt.figure(figsize = (10,6)) 
     ax1 = fig.add_subplot(1,1,1)
 
+
+    # geometry for different datasets
     if wall:
         ax1.vlines(-60, ymin=255, ymax=400, lw=3, color="fuchsia")
         ax1.vlines(-60, ymin=-200, ymax=-95, lw=3, color="fuchsia")
@@ -129,7 +175,7 @@ def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc
     ax1.set_ylabel('y Pos. / cm ')
     ax1.set_title(title, loc="left")
 
-    #Using FuncAnimation we need to create an animation function which return and/or done a repetitive action
+    # animation function that is called for each frame
     def animate(i):
         scat.set_offsets(data[i])
         scat_ai.set_offsets(ai_data[i])
@@ -140,6 +186,7 @@ def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc
     ani = animation.FuncAnimation(fig = fig, func = animate, frames =frames, interval = int(step*1000/fps), blit=True)
     plt.close(fig)
     
+    # save animation to .mp4 or .gif via writer
     if save:
         if useFFMPEG:
             writer = animation.FFMpegWriter(fps=fps/step, extra_args=['-vcodec', 'libx264'])
@@ -152,20 +199,30 @@ def animateLoc(loader, frame_start, frame_stop, boundaries, ai = None, path="loc
 
 # Trajectory animation
 def animateTraj(loader, frame_start, frame_stop, boundaries, wall=False, cor=False, ai=None, path="traj_anim.gif", save=False, step=1, fps=16, title="Trajectory Animation", useFFMPEG=False):
-    """ Animate the Trajectory as lines
+    """ Animate Trajectory with the DataLoader object as lines. Here, the trajectories are rendered as continuously expanding
+        lines. People (from dataset) are plotted with red lines, ai_agents are plotted in black.
 
-        loader:     loader objekct that stores the data
-        frame_start:frame where the animation starts
-        frame_stop: frame where the animation stops
-        boundaries: figure boundaries [xmin, xmax, ymin, ymax]
-        ai:         person list to select the ai agents for color grading
-        path:       filepath + filenahme for saving
-        save:       if True, save plot
-        step:       frame steps for animation (f.e. step=5 uses every 5th frame)
-        fps:        frames per second for the animation (with step=1)
-        title:      Title of the Animation
-        useFFMPEG:  use FFMPEG writer instead of Pillow
-    """
+        PARAM
+
+            loader:         loader object that stores the data
+            frame_start:    Integer. Start frame number for the animation
+            frame_stop:     Integer. Stop frame number for the animation
+            boundaries:     figure boundaries [xmin, xmax, ymin, ymax]
+            ai:             List of indexes of that are ai_agents (for color differentiating). If None, no ai_agents are plotted
+            path:           filepath + filename for saving (relative path)
+            save:           True/False. If True, save plot
+            step:           frame steps for animation (f.e. step=5 uses every 5th frame)
+            fps:            frames per second for the animation. Default is 16 (= actual data fps)
+            wall:           True/False. If True, plots the wall geometry for the ao-360-*** bottleneck
+            cor.            True/False, If True, plots the wall geometry for the ug-180-*** corridor
+            title:          String. Figure title
+            useFFMPEG:      True/False. If True, use FFMPEG writer to create videos (must be installed!). 
+                            Uses PillowWriter as default.
+        
+        RETURN
+            -
+
+        """
     # prepare data for animation
     data = []
     person = []
@@ -175,6 +232,7 @@ def animateTraj(loader, frame_start, frame_stop, boundaries, wall=False, cor=Fal
     people_count = int(p_[p_ < 1000].max())
     print(people_count)
 
+    # load data in data structure for animation
     for i in np.arange(frame_start, frame_stop, step):
         data.append(loader.frame(i, ret_vel=False, with_id=False)[1])
         person.append(loader.frame(i, ret_vel=False, with_id=False)[0])
@@ -184,15 +242,16 @@ def animateTraj(loader, frame_start, frame_stop, boundaries, wall=False, cor=Fal
     #creating a subplot 
     ax1 = fig.add_subplot(1,1,1)
 
+    # figures specds
     ax1.set_xlim([boundaries[0], boundaries[1]])
     ax1.set_ylim([boundaries[2], boundaries[3]])
-
 
     ax1.set_aspect('equal', adjustable='box')
     ax1.set_xlabel('x Pos. / cm')
     ax1.set_ylabel('y Pos. / cm ')
     ax1.set_title(title, loc="left")
 
+    # dataset geometry
     if wall:
         ax1.vlines(-60, ymin=255, ymax=400, lw=3, color="fuchsia")
         ax1.vlines(-60, ymin=-200, ymax=-95, lw=3, color="fuchsia")
@@ -229,7 +288,7 @@ def animateTraj(loader, frame_start, frame_stop, boundaries, wall=False, cor=Fal
             line.set_data([],[])
         return lines
 
-    #Using FuncAnimation we need to create an animation function which return and/or done a repetitive action
+    #Animation function that is called for each frame
     def animate(i):
     
         #update data for plotting
@@ -250,6 +309,7 @@ def animateTraj(loader, frame_start, frame_stop, boundaries, wall=False, cor=Fal
     ani = animation.FuncAnimation(fig = fig, func = animate, frames = frames, interval = int(step*1000/fps), blit=True) 
     plt.close(fig)
     
+    # save animation by writing frames to .mp4 or .gif via writer
     if save:
         if useFFMPEG:
             writer = animation.FFMpegWriter(fps=fps/step, extra_args=['-vcodec', 'libx264'])
@@ -259,14 +319,22 @@ def animateTraj(loader, frame_start, frame_stop, boundaries, wall=False, cor=Fal
     return ani
 
 
+
 #fast data preview
 def animatePreview(loader, boundaries, step):
     """ quickly preview Animation in a jupyter notebook, using plotly.
+    
+        PARAM
 
-        loader:     loader objekct that stores the data
-        boundaries: figure boundaries [xmin, xmax, ymin, ymax]
-        step:       frame-step from one image to the next (step=1 means all frames are plotted, step=5 everey 5th)
-        """
+            loader:         DataLoader object that stores the data
+            boundaries:     figure boundaries [xmin, xmax, ymin, ymax]
+            step:           frame-step from one image to the next 
+                            (step=1 means all frames are plotted, step=5 everey 5th)
+
+        RETURN
+            -
+
+    """
     import plotly.express as px
     fig = px.scatter(loader.data[(loader.data['f'] % 10) == 0], 
            x="x", y="y", 
@@ -275,8 +343,21 @@ def animatePreview(loader, boundaries, step):
            template="plotly_white", title="Animation Preview")
     fig.show()
 
+
+
 # running average filter 
 def smooth(y, box_pts):
+    """ Smoothen input data y with a running average filter given by the length box_pts.
+
+    PARAM
+
+        y:          Input data to smooth, as numpy array
+        box_pts:    Running average window length
+        
+    RETURN
+        y_smooth:   smoothened data with same shape as y
+
+    """
     box = np.ones(box_pts)/box_pts
     y_smooth = np.convolve(y, box, mode='same')
     return y_smooth
