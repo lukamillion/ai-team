@@ -358,6 +358,7 @@ def save_torch(model, optimizer, f_name, param, scan=False, prefix='', creator="
                       'decay':param['decay'],
                       'decay_step':param['decay_step'],
                       'device':str(param['device']),
+                      'mtl':param.get('mtl', -1),
                       'msg':param['msg'],
                        })
     

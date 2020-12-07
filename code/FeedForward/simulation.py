@@ -41,10 +41,13 @@ class Agent():
             self.device = device
             self.truth_with_vel = truth_with_vel
             self.FPS = FPS
+
         else:
             self.device = param['device']
             self.truth_with_vel = param['dataset']['truth_with_vel']
-            self.FPS = param['dataset']['fps']
+            self.FPS = param['dataset']['fps']/param['dataset']['downsample']
+            # we set the start frame to a integer multiple of downsample
+            frame_0=int(frame_0/param['dataset']['downsample'])*param['dataset']['downsample']
         
         if self.device.type.startswith("cuda"):
             self.model.cuda()
