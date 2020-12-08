@@ -272,7 +272,7 @@ def load_torch(f_name, MODEL_class, prefix='model_1'):
     for l in mod_params['layers']:
         layer_param = load_attrs(mod[l])      # get the device settings for each tensor
         #stat[l] = torch.from_numpy(mod.get(l).value,).to(layer_param['device'])   # initialize the model weight tensors
-        stat[l] = torch.from_numpy(np.array(mod[l]),).to(layer_param['device'])   # initialize the model weight tensors
+        stat[l.decode("utf-8") ] = torch.from_numpy(np.array(mod[l]),).to(layer_param['device'])   # initialize the model weight tensors
         
 
     database.close()
@@ -380,7 +380,7 @@ def save_torch(model, optimizer, f_name, param, scan=False, prefix='', creator="
     # write the tensor attributes to the datset
     for k, v in stat.items():
         
-        layers += [k]
+        layers += [k.encode("ascii", "ignore")]
         
         dat = v.cpu().detach().numpy()
         ds = mod.create_dataset( name=k,shape=v.shape, 
