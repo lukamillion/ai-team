@@ -228,7 +228,7 @@ class Engine():
 
 
     
-    def save(self, name="sim.csv", include_truth=True):
+    def save(self, name="sim", include_truth=True):
         """
             Save the simulation in the dataloader compatilbe format.
             Make shure no agent id overlaps with the person id
