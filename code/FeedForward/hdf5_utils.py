@@ -271,8 +271,10 @@ def load_torch(f_name, MODEL_class, prefix='model_1'):
     stat = collections.OrderedDict() 
     for l in mod_params['layers']:
         layer_param = load_attrs(mod[l])      # get the device settings for each tensor
-        #stat[l] = torch.from_numpy(mod.get(l).value,).to(layer_param['device'])   # initialize the model weight tensors
-        stat[l.decode("utf-8") ] = torch.from_numpy(np.array(mod[l]),).to(layer_param['device'])   # initialize the model weight tensors
+        if type(l)==str: # support older files that were created with a previous verson of the data saver
+          stat[l] = torch.from_numpy(np.array(mod[l]),).to(layer_param['device'])   # initialize the model weight tensors
+        else:     # to support all platforms we use byte encoding
+          stat[l.decode("utf-8") ] = torch.from_numpy(np.array(mod[l]),).to(layer_param['device'])   # initialize the model weight tensors
         
 
     database.close()
