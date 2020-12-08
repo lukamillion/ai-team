@@ -34,4 +34,14 @@ Here you find all codes for the Feed Forward approach. The *.py files provide th
 * Helper to measure meanspead and density
 
 
+## Installation
+In order to run the code on your computer, the following programs / environments are needed:
+
+1. Install Python 3 (we recommend installing it via [Anaconda](https://www.anaconda.com))
+2. Install [Pytorch](https://pytorch.org) (if possible with CUDA support) 
+3. Install various additional packages
+    * [Progressbar](https://pypi.org/project/progressbar2/)
+    * [HDF5](https://docs.h5py.org/en/stable/)
+    * [Pandas](https://pandas.pydata.org/)
+
 
