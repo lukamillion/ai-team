@@ -1,6 +1,6 @@
 Bottleneck Data "AO" from Jühlich university.
 
-Data is converted to fixed-width format to work with the DataLoader.
+The original data is formated as seperated file. In order to work with the DataLoader we need a fixed with file. We used the [Skript](csv_to_fwf.py) to convert the Formating.
 
 naming convention: "ao-num1-num2_combine.txt":
       
