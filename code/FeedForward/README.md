@@ -33,6 +33,8 @@ Here you find all codes for the Feed Forward approach. The *.py files provide th
 * Engine class to run simulations 
 * Helper to measure meanspeed and density
 
+### visualizatioin.py
+* Creating heatmaps and plots for presentation and report.
 
 ## Installation
 In order to run the code on your computer, the following programs / environments are needed:
