@@ -25,3 +25,11 @@ model_3 | True | False | True | 8 | EPFL
 model_4 | False | False | False | 8 | EPFL
 model_5 | True | True | True | 8 | [50,20,50]
 model_6 | True | True | True | 1 | EPFL
+
+
+The files param_scan_***_i.npy, i = 0,...,5,p contain the measured speeds (vel) and density (den) in the ROI.
+param_scan.npy contains the mean speed / density for the datasets in one array in the shape:
+
+axis 0: different model sets
+axis 1: [density_pers, density_pers_err, density_agent, density_agent_err, 
+	velocity_pers, velocity_pers_err, velocity_agent, velocity_agent_err]
