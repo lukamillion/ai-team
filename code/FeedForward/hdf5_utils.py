@@ -226,7 +226,7 @@ def load_trainingdata(file_name):
 """
 
 
-def load_torch(f_name, MODEL_class, prefix='model_1'):
+def load_torch(f_name, MODEL_class, prefix='model_1', change_dev=None):
     """
         Load a torch model and initialize a instance of the sored model. load all settings along the model.
         
@@ -234,6 +234,7 @@ def load_torch(f_name, MODEL_class, prefix='model_1'):
           f_name:       file to read from
           MODEL_class:  Torch model class (nn.Module)
           prefix:       if multiple networks are sotred in the file select a model
+          change_dev:   chang the torch device (cpu, cuda:0)
         RETURN:
 
     """
@@ -261,7 +262,10 @@ def load_torch(f_name, MODEL_class, prefix='model_1'):
     params['input_s'] = mod_params['input_s']
     params['hidden_s'] = mod_params['hidden_s']
     params['output_s'] = mod_params['output_s']
-    params['device'] = torch.device(params['device'])
+    if change_dev is None:
+        params['device'] = torch.device(params['device'])
+    else:
+        params['device'] = torch.device(change_dev)
     
 
     # create model from stored parameters
