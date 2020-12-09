@@ -4,6 +4,7 @@ from matplotlib import cm
 import numpy as np
 import pandas
 import pickle as pkl
+import os
 
 #Parameters describing the limits of the field
 xmin=-610     #lower bound of x-scale
@@ -16,9 +17,10 @@ y_steps=62    #absolute resolution on x-axis
 
 '''
 This script assumes the existence of a folder (in this case the folder 'rawdata')
-containing a csv file named "data.csv" containing the data in the format of the 
-Data-Loader and a folder named "giffify". The folder giffify needs to contain 
-three empty folders "densities" "speeds" and "flows". 
+containing a csv file named sim_name+".csv" containing the data in the format of the 
+Data-Loader and a folder named "giffify"+suffix. The folder "giffify"+suffix contains 
+three folders "densities" "speeds" and "flows". If the folder does not exist it is created. 
+
 The script will save the following files:
     - flowchart.png in the main folder. Flowchart of all flow data points
       scattered over all densities for all positions in all frames. 
@@ -36,11 +38,20 @@ The script will save the following files:
       all occuring flow values over all frames and positions
 '''
 
+"""
+    Set here the parameters.
+"""
+
 #path of the working folder containing data.csv and giffify
-folder_path='/Users/alexanderjurgens/Desktop/MyIDE/Visualizations/rawdata/'
+folder_path='data/Output/nn_scan/'
+suffix = '_nn1'
+
+sim_name = 'model_nn1'
+
+
 
 #load the dataset data.csv using pandas
-data=pandas.read_csv(folder_path+'data.csv',skiprows=1,names=['row','person','frame','y','x','z','vx','vy'])
+data=pandas.read_csv(folder_path+sim_name+'.csv',skiprows=1,names=['row','person','frame','y','x','z','vx','vy'])
 
 
 # Returns the number of people present at frame 'frame'
@@ -79,7 +90,7 @@ def surface3d(f,data=data):
     
     ax.view_init(90,30)
     
-    plt.show()
+    #plt.show()
     
 # creates heatmap of data
 def heatmap(f,data=data,vmin=0,vmax=19,save='',title='',isarray=False,xmin=xmin,xmax=xmax,ymin=ymin,ymax=ymax,x_steps=x_steps,y_steps=y_steps):
@@ -116,7 +127,7 @@ def heatmap(f,data=data,vmin=0,vmax=19,save='',title='',isarray=False,xmin=xmin,
         if not title=='':
             plt.title(title)
             
-        plt.show()
+        #plt.show()
         return
     fig, ax = plt.subplots()
     X = np.linspace(xmin, xmax, x_steps)
@@ -134,27 +145,9 @@ def heatmap(f,data=data,vmin=0,vmax=19,save='',title='',isarray=False,xmin=xmin,
     if not title=='':
         plt.title(title)
         
-    plt.show()
+    #plt.show()
     return
     
-
-densities=[]
-flows=[]
-a=np.min(data['frame'])
-b=np.max(data['frame'])
-print('Frames from '+str(a)+' to '+str(b)+':')
-for frame in np.arange(a,b+1,8):
-    print(frame)
-    for x in np.linspace(xmin,xmax,x_steps):
-        for y in np.linspace(ymin,ymax,y_steps):
-            d=density(x,y,frame,rcount=70)
-            if d!=0:
-                v=meanspeed(x,y,frame,rcount=70)
-                densities.append(d)
-                flows.append(v*d)
-    heatmap(lambda x,y,data:density(x,y,frame,rcount=70),save=folder_path+'giffify/densities/density_'+str(frame)+'.png',vmax=19,title="Density")
-    heatmap(lambda x,y,data:meanspeed(x,y,frame,rcount=70),save=folder_path+'giffify/speeds/speed_'+str(frame)+'.png',vmax=242,title="Mean Speed")
-    heatmap(lambda x,y,data:meanspeed(x,y,frame,rcount=70)*density(x,y,frame,rcount=70),save=folder_path+'giffify/flows/flow_'+str(frame)+'.png',vmax=1200,title="Flow")
 
 
 # for frame in np.arange(a,b+1,8):
@@ -170,10 +163,39 @@ for frame in np.arange(a,b+1,8):
 #     heatmap(lambda x,y,data:meanspeed(x,y,frame,rcount=70),save=folder_path+'giffify/speeds/speed_'+str(frame)+'.png',vmax=242,title="Mean Speed")
 #     heatmap(lambda x,y,data:meanspeed(x,y,frame,rcount=70)*density(x,y,frame,rcount=70),save=folder_path+'giffify/flows/flow_'+str(frame)+'.png',vmax=1200,title="Flow")
 
-a_file = open(folder_path+"densities.pkl", "wb")
+
+
+
+if not os.path.isdir(folder_path+'giffify'+suffix):
+    os.makedirs(os.path.dirname(folder_path+'giffify'+suffix+'/densities/'))
+    os.makedirs(os.path.dirname(folder_path+'giffify'+suffix+'/speeds/'))
+    os.makedirs(os.path.dirname(folder_path+'giffify'+suffix+'/flows/'))
+
+densities=[]
+flows=[]
+a=np.min(data['frame'])
+b=np.max(data['frame'])
+b=100
+print('Frames from '+str(a)+' to '+str(b)+':')
+for frame in np.arange(a,b+1,8):
+    print(frame)
+    for x in np.linspace(xmin,xmax,x_steps):
+        for y in np.linspace(ymin,ymax,y_steps):
+            d=density(x,y,frame,rcount=70)
+            if d!=0:
+                v=meanspeed(x,y,frame,rcount=70)
+                densities.append(d)
+                flows.append(v*d)
+    heatmap(lambda x,y,data:density(x,y,frame,rcount=70),save=folder_path+'giffify'+suffix+'/densities/density_'+str(frame)+'.png',vmax=19,title="Density")
+    heatmap(lambda x,y,data:meanspeed(x,y,frame,rcount=70),save=folder_path+'giffify'+suffix+'/speeds/speed_'+str(frame)+'.png',vmax=242,title="Mean Speed")
+    heatmap(lambda x,y,data:meanspeed(x,y,frame,rcount=70)*density(x,y,frame,rcount=70),save=folder_path+'giffify'+suffix+'/flows/flow_'+str(frame)+'.png',vmax=1200,title="Flow")
+
+
+
+a_file = open(folder_path+'giffify'+suffix+"/densities.pkl", "wb")
 pkl.dump(densities,a_file)
 a_file.close()
-a_file = open(folder_path+"flows.pkl", "wb")
+a_file = open(folder_path+'giffify'+suffix+"/flows.pkl", "wb")
 pkl.dump(flows,a_file)
 a_file.close()
 
@@ -181,14 +203,14 @@ plt.scatter(densities, flows)
 plt.title('Flow Chart')
 plt.xlabel('Density')
 plt.ylabel('Flow')
-plt.savefig(folder_path+'flowchart.png')
+plt.savefig(folder_path+'giffify'+suffix+'/flowchart.png')
 plt.show()
 
 plt.scatter(np.array(densities),np.array(flows)/np.array(densities))
 plt.title('Velocity over Density')
 plt.xlabel('Density')
 plt.ylabel('velocity')
-plt.savefig(folder_path+'velchart.png')
+plt.savefig(folder_path+'giffify'+suffix+'/velchart.png')
 plt.show()
 
     
