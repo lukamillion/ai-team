@@ -175,7 +175,7 @@ densities=[]
 flows=[]
 a=np.min(data['frame'])
 b=np.max(data['frame'])
-b=100
+b=10
 print('Frames from '+str(a)+' to '+str(b)+':')
 for frame in np.arange(a,b+1,8):
     print(frame)
