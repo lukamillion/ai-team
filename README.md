@@ -8,7 +8,7 @@
 
 As the title implies, our project exists in the overlap of two interesting, but quite different, sciences - machine learning and pedestrian dynamics. Since machine learning using neural networks is a relatively new and quickly growing field, we thought that it would be nice to have at least some first hand experience with it. And because the context of our project is more about applying neural networks and less about working on the theory behind it, it was a good opportunity for us to gather our first experiences. Pedestrian dynamics on the other hand intrigued us mostly because the system itself, containing not just one, but many human minds, seems infinitely complex. But still it can be described with surprisingly simple models.
 
-While searching for a more specific goal, we have come across a paper published in the Journal of Intelligent Transportation Systems[[1]]. It is about using neural networks to predict the speed of pedestrians. We wanted to take it a step further and also try to predict the velocity (speed and direction) of pedestrians.
+While searching for a more specific goal, we have come across a paper published in the Journal of Intelligent Transportation Systems[1]. It is about using neural networks to predict the speed of pedestrians. We wanted to take it a step further and also try to predict the velocity (speed and direction) of pedestrians.
 
 This approach is very different to most historical approaches which view pedestrians as something akin to particles (social forces model) or fluids. We believe that our more data driven approach could be used to view this problem from a different angle. A model a bit more refined than ours could be used to test out different geometries for spaces where pedestrians should move in. This information could then be used to optimize those spaces and improve metrics, like maximum flow, dwelling time or to predict pedestrian trajectories in an autonomous vehicle. 
 
@@ -38,7 +38,13 @@ We expected our model to stand up to a visual comparison to real human data and 
 
 ## References
 
-WIRD AM ENDE GEMACHT
+[1] Antoine  Tordeux,  Mohcine  Chraibi,  Armin  Seyfried,  and  Andreas  Schadschneider.Prediction of pedestrian dynamics in complex architectures with artificial neural net-works.Journal of Intelligent Transportation Systems, pages 1–13, 2020.
+
+[2] Forschungszentrum  Jülich.   Data  archive  of  experimental  data  from  studies  aboutpedestrian  dynamics. https://ped.fz-juelich.de/database/doku.php#crowds_in_front_of_bottlenecks_from_the_perspective_of_physics_and_social_psychology.
+
+[3] Mark Pfeiffer, Giuseppe Paolo, Hannes Sommer, Juan Nieto, Rol Siegwart, and CesarCadena.  A data-driven model for interaction-aware pedestrian motion prediction inobject cluttered environments.  In2018 IEEE International Conference on Roboticsand Automation (ICRA), pages 1–8. IEEE, 2018.
+
+[4] Mohammadhossein Bahari and Alexandre Alahi.  Feed-forwards meet recurrent net-works in vehicle trajectory prediction.  Technical report, 2019.
 
 
 ## Research Methods
