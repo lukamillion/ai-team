@@ -28,7 +28,7 @@ We achieved the best results by tweaking the inputs and outputs of the network, 
 
 ## Fundamental Questions
 
-The main question of this project was to see if agent based neural networks can be used to accurately describe pedestrian dynamics. To see if our model achieved this feat we had to compare our model to the recorded human data in a pedestrian dynamics context and access it's fitness. For this we generated velocity-flow and density-flow diagrams for both our model moving int he 2d space described above and the recorded data. For this question to be answere satisfyingly it was also important to look at the weaknesses and breakdown points of our model. In what extreme situations would our neural networks not be able to predict human behaviour anymore?
+The main question of this project was to see if agent based neural networks can be used to accurately describe pedestrian dynamics. To see if our model achieved this feat we had to compare our model to the recorded human data in a pedestrian dynamics context and access it's fitness. For this we generated velocity-flow and density-flow diagrams for both our model moving in the 2d space described above and the recorded data. For this question to be answered satisfyingly it was also important to look at the weaknesses and breakdown points of our model. In what extreme situations would our neural networks not be able to depict human behaviour anymore?
 
 
 ## Expected Results
