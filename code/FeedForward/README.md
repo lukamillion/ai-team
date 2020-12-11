@@ -47,7 +47,7 @@ In order to run the code on your computer, the following programs / environments
     * [HDF5](https://docs.h5py.org/en/stable/)
     * [Pandas](https://pandas.pydata.org/)
 
-Code was developed and tested on the following system but should run platform independant as of our knowlage. 
+Code was developed and tested on the following system but should run platform independant as of our knowledge. 
 
     Ubuntu 20.04.1
     Python 3.8.3
